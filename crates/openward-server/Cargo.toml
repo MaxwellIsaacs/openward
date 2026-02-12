@@ -1,0 +1,10 @@
+[package]
+name = "openward-server"
+description = "HTTP API server and frontend host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+openward-core.workspace = true
+openward-facility.workspace = true

@@ -1,0 +1,19 @@
+[package]
+name = "openward-registry"
+description = "Inmate registry module — SQLite-backed Registry trait implementation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+openward-core.workspace = true
+openward-db.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

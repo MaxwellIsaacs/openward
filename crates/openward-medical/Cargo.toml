@@ -1,0 +1,9 @@
+[package]
+name = "openward-medical"
+description = "Medical records, prescriptions, and drug interaction checking"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+openward-core.workspace = true

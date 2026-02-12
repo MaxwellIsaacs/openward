@@ -1,0 +1,15 @@
+[package]
+name = "openward-facility"
+description = "Module composition layer, cross-module invariants, audit trail, config"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+openward-core.workspace = true
+openward-registry.workspace = true
+openward-medical.workspace = true
+openward-disciplinary.workspace = true
+openward-commissary.workspace = true
+openward-visitors.workspace = true
+serde.workspace = true
