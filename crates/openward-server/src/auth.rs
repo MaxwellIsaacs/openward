@@ -56,7 +56,7 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool, argon2::passw
 
 /// Seed a default admin operator if no operators exist.
 ///
-/// Inserts username `admin` with password `changeme`, role `admin`, language `fr`.
+/// Inserts username `admin` with password `changeme`, role `admin`, language `en`.
 /// No-op if any operator already exists.
 pub async fn seed_default_admin(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM operators")
@@ -74,7 +74,7 @@ pub async fn seed_default_admin(pool: &SqlitePool) -> Result<(), sqlx::Error> {
 
     sqlx::query(
         "INSERT INTO operators (id, username, display_name, password_hash, role, language, is_active, must_change_password, created_at) \
-         VALUES (?, 'admin', 'Administrateur', ?, 'admin', 'fr', 1, 1, ?)"
+         VALUES (?, 'admin', 'Administrator', ?, 'admin', 'en', 1, 1, ?)"
     )
     .bind(&id)
     .bind(&password_hash)

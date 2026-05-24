@@ -78,7 +78,7 @@ sudo journalctl -u openward -n 50 --no-pager
 | `OPENWARD_BACKUP_DIR` | Directory for automatic backups | `./backups/` |
 | `OPENWARD_BACKUP_RETENTION` | Number of backup files to retain | `30` |
 | `OPENWARD_SESSION_SECRET` | Secret for session cookie signing. Auto-generated if not set (sessions will not survive restarts) | *(random)* |
-| `OPENWARD_LEGAL_PRESET` | Legal terminology preset (`madagascar`, etc.) | *(none)* |
+| `OPENWARD_LEGAL_PRESET` | Compiled-in legal terminology preset. Valid values: `fr-MG` (Madagascar), `en-DM` (Dominica) | *(none)* |
 | `OPENWARD_LEGAL_TERMS` | Path to a TOML file with custom legal term overrides | *(none)* |
 | `RUST_LOG` | Logging level filter | `openward_server=info,tower_http=info` |
 

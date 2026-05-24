@@ -57,7 +57,7 @@ impl SqliteRegistry {
             let id = uuid::Uuid::new_v4().to_string();
             sqlx::query(
                 "INSERT INTO housing_units (id, name, capacity, unit_type) \
-                 VALUES (?, 'Batiment communal', ?, 'General')"
+                 VALUES (?, 'Main Wing', ?, 'General')"
             )
             .bind(&id)
             .bind(self.config.capacity as i32)

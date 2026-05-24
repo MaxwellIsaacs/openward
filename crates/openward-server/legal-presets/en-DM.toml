@@ -1,0 +1,24 @@
+# Dominica (Commonwealth of Dominica) legal terminology preset.
+#
+# Generic English in locales/en/legal.ftl already maps cleanly to
+# Eastern Caribbean common-law terminology, so the [en] section is
+# intentionally thin. This file exists to:
+#
+# 1. Make OPENWARD_LEGAL_PRESET=en-DM a valid value (the load_preset
+#    match in src/i18n.rs enumerates accepted preset names).
+# 2. Document the seam where Dominica-specific terms (Magistrate's Court
+#    vs. High Court naming, charge classifications against the Dominica
+#    Criminal Code Chap. 10:01, custody time limits under the Criminal
+#    Procedure Act) will be added as the pilot surfaces divergences.
+# 3. Mirror the pattern of fr-MG.toml so the second Caribbean preset
+#    (en-GD for Grenada) follows the same shape.
+#
+# Add overrides under [en]. Only include terms that differ from the
+# generic translations in locales/en/legal.ftl — omitted keys fall
+# through to those defaults.
+
+[en]
+# "Remand" is the prevailing Eastern Caribbean term; this is identical
+# to the generic English default but stated explicitly so the intent
+# is documented for reviewers.
+legal-basis-remand = "Remand"

@@ -124,6 +124,7 @@ pub fn parse_legal_overrides(toml_str: &str) -> HashMap<String, String> {
 pub fn load_preset(name: &str) -> HashMap<String, String> {
     let toml_str = match name {
         "fr-MG" => include_str!("../legal-presets/fr-MG.toml"),
+        "en-DM" => include_str!("../legal-presets/en-DM.toml"),
         _ => return HashMap::new(),
     };
     parse_legal_overrides(toml_str)
