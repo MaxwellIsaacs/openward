@@ -1,0 +1,23 @@
+[package]
+name = "openward-seed"
+description = "Demo data seeder for OpenWard — populates a fresh database with synthetic detainees"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "openward-seed"
+path = "src/main.rs"
+
+[dependencies]
+openward-core.workspace = true
+openward-registry.workspace = true
+openward-facility.workspace = true
+openward-server.workspace = true
+tokio.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+clap.workspace = true
+rand.workspace = true

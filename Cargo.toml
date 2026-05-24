@@ -10,6 +10,7 @@ members = [
     "crates/openward-facility",
     "crates/openward-db",
     "crates/openward-server",
+    "crates/openward-seed",
 ]
 
 [workspace.package]
@@ -55,6 +56,10 @@ regex = "1"
 unic-langid = "0.9"
 toml = "0.8"
 
+# Demo seed deps
+clap = { version = "4", features = ["derive"] }
+rand = "0.8"
+
 # Internal crates
 openward-core = { path = "crates/openward-core" }
 openward-registry = { path = "crates/openward-registry" }
@@ -64,3 +69,4 @@ openward-commissary = { path = "crates/openward-commissary" }
 openward-visitors = { path = "crates/openward-visitors" }
 openward-facility = { path = "crates/openward-facility" }
 openward-db = { path = "crates/openward-db" }
+openward-server = { path = "crates/openward-server" }
