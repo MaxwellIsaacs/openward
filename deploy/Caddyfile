@@ -1,0 +1,35 @@
+# Caddyfile for the OpenWard Hetzner demo.
+#
+# Install at /etc/caddy/Caddyfile and reload with `systemctl reload caddy`.
+# Caddy auto-provisions a Let's Encrypt certificate once the A record for
+# openward-demo.maxisaacs.com resolves to this box's IPv4.
+
+openward-demo.maxisaacs.com {
+	# OpenWard listens on 127.0.0.1:3000 (set OPENWARD_BIND in the env file).
+	reverse_proxy 127.0.0.1:3000
+
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		# Conservative CSP — the app serves its own static htmx + pico assets
+		# from /static, no third-party origins.
+		Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'"
+		# Hide the framework from response headers.
+		-Server
+	}
+
+	# Static assets get long-lived caching; everything else is no-store so
+	# audit-relevant pages are never served stale.
+	@static path /static/*
+	header @static Cache-Control "public, max-age=604800, immutable"
+	@dynamic not path /static/*
+	header @dynamic Cache-Control "no-store"
+
+	log {
+		output file /var/log/caddy/openward-demo.log
+		format json
+	}
+}

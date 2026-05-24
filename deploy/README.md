@@ -119,3 +119,145 @@ On first start with an empty database, OpenWard automatically:
 3. Creates a default admin account (`admin` / `changeme`)
 
 The admin credentials are logged prominently. On first login, the admin is redirected to the profile page and must change the default password before accessing any other functionality.
+
+## Hetzner Demo Deployment
+
+Runbook for the public HTTPS demo at `openward-demo.maxisaacs.com`. This
+target is a Hetzner CAX11 (ARM `aarch64`, 2 vCPU, 4 GB RAM, ~€4/mo) —
+the same instruction set as the Raspberry Pi 4 the production pilot
+targets. Synthetic demo data only; do **not** put real prisoner data on
+this box.
+
+### 1. Provision the server
+
+- Create a Hetzner CAX11, Ubuntu 24.04 LTS. Record the IPv4.
+- Add your SSH key during creation.
+
+### 2. DNS
+
+At your DNS provider for `maxisaacs.com`, create an A record:
+
+```
+openward-demo  A  <hetzner-ipv4>
+```
+
+Wait for it to resolve (`dig +short openward-demo.maxisaacs.com` from
+another host) before continuing — Caddy will fail to issue a certificate
+if the name does not resolve to this server.
+
+### 3. Box bootstrap (as `root`)
+
+```bash
+apt update
+apt install -y build-essential pkg-config libssl-dev sqlite3 ufw caddy curl git ca-certificates
+```
+
+Firewall — never expose the OpenWard port directly:
+
+```bash
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+```
+
+### 4. System user and directories
+
+```bash
+useradd --system --no-create-home --shell /usr/sbin/nologin openward
+mkdir -p /var/lib/openward/backups /etc/openward /opt/openward /opt/openward-src
+chown -R openward:openward /var/lib/openward
+```
+
+### 5. Build OpenWard natively on the box
+
+```bash
+sudo -iu openward bash <<'EOS'
+cd ~
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+source ~/.cargo/env
+git clone https://github.com/openward/openward /opt/openward-src
+cd /opt/openward-src
+cargo build --release --workspace
+EOS
+
+# Cold compile takes ~10 minutes on a CAX11 — that is normal.
+install -m 0755 /opt/openward-src/target/release/openward-server /opt/openward/openward-server
+install -m 0755 /opt/openward-src/target/release/openward-seed /opt/openward/openward-seed
+```
+
+### 6. Environment file
+
+```bash
+SECRET=$(openssl rand -hex 32)
+cat >/etc/openward/openward.env <<EOF
+OPENWARD_DB=/var/lib/openward/openward.db
+OPENWARD_BIND=127.0.0.1:3000
+OPENWARD_BACKUP_DIR=/var/lib/openward/backups
+OPENWARD_BACKUP_RETENTION=30
+OPENWARD_SESSION_SECRET=$SECRET
+OPENWARD_CAPACITY=150
+OPENWARD_LEGAL_PRESET=en-DM
+RUST_LOG=openward_server=info
+EOF
+chmod 600 /etc/openward/openward.env
+chown openward:openward /etc/openward/openward.env
+```
+
+`OPENWARD_BIND=127.0.0.1:3000` is deliberate: the server is only
+reachable through Caddy. The firewall blocks 3000 anyway, but binding to
+loopback removes the attack surface entirely.
+
+### 7. systemd unit
+
+```bash
+install -m 0644 /opt/openward-src/deploy/openward.service /etc/systemd/system/openward.service
+systemctl daemon-reload
+systemctl enable --now openward
+journalctl -u openward -n 50 --no-pager   # confirm "starting OpenWard"
+```
+
+### 8. Seed the demo data
+
+```bash
+sudo -u openward /opt/openward/openward-seed \
+    --db /var/lib/openward/openward.db \
+    --count 80
+```
+
+Re-running without `--force` aborts — this is the safety against
+accidental reseeding.
+
+### 9. Caddy
+
+```bash
+install -m 0644 /opt/openward-src/deploy/Caddyfile /etc/caddy/Caddyfile
+mkdir -p /var/log/caddy
+chown caddy:caddy /var/log/caddy
+systemctl reload caddy
+journalctl -u caddy -n 30 --no-pager      # look for "certificate obtained"
+```
+
+### 10. Smoke test
+
+```bash
+curl -fsS https://openward-demo.maxisaacs.com/health
+curl -fI  http://openward-demo.maxisaacs.com    # expect 308 redirect
+curl -vI https://openward-demo.maxisaacs.com 2>&1 | grep -i issuer
+```
+
+Then browse to `https://openward-demo.maxisaacs.com`, log in with
+`admin` / `changeme`, change the password when prompted, and click
+through the dashboard, population list, a detainee detail page, and the
+audit trail.
+
+### 11. Update path
+
+For minor fixes during the demo period:
+
+```bash
+sudo -u openward bash -c 'cd /opt/openward-src && git pull && cargo build --release --workspace'
+install -m 0755 /opt/openward-src/target/release/openward-server /opt/openward/openward-server
+install -m 0755 /opt/openward-src/target/release/openward-seed /opt/openward/openward-seed
+systemctl restart openward
+```
