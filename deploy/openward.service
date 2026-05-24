@@ -1,0 +1,30 @@
+[Unit]
+Description=OpenWard Facility Management System
+Documentation=https://github.com/openward/openward
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=openward
+Group=openward
+WorkingDirectory=/opt/openward
+ExecStart=/opt/openward/openward-server
+Restart=on-failure
+RestartSec=5
+
+# Environment
+Environment=RUST_LOG=openward_server=info,tower_http=info
+EnvironmentFile=-/etc/openward/openward.env
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/openward /var/lib/openward/backups
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target
