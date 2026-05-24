@@ -1,6 +1,7 @@
 use openward_core::{
     DetentionBasisFilter, FacilityStatus, PopulationQuery, SortField, SortOrder,
 };
+// BailStatusFilter, ChargeSeverity accessed via openward_core:: prefix in match arms
 
 /// Builds a dynamic SQL WHERE clause and ORDER BY from a PopulationQuery.
 ///
@@ -22,6 +23,15 @@ impl QueryBuilder {
             order_clause: String::new(),
             limit_offset: String::new(),
         };
+
+        // Name search (surname / given_names LIKE)
+        if let Some(name) = &query.name_search {
+            let escaped = name.replace('\'', "''");
+            builder.conditions.push(format!(
+                "(surname LIKE '%{}%' COLLATE NOCASE OR given_names LIKE '%{}%' COLLATE NOCASE)",
+                escaped, escaped
+            ));
+        }
 
         // Detention basis filter
         if let Some(basis) = &query.detention_basis {
@@ -106,6 +116,62 @@ impl QueryBuilder {
                 "julianday('now') - julianday(intake_date) < {}",
                 days
             ));
+        }
+
+        // Bail status filter
+        if let Some(bail) = &query.bail_status {
+            let bail_str = match bail {
+                openward_core::BailStatusFilter::NotApplied => "NoBail",
+                openward_core::BailStatusFilter::Applied => "BailApplied",
+                openward_core::BailStatusFilter::GrantedStillHeld => "BailGranted",
+                openward_core::BailStatusFilter::Denied => "BailDenied",
+                openward_core::BailStatusFilter::Revoked => "BailDenied", // revoked stored as denied
+            };
+            builder.conditions.push(format!("bail_status_label = '{}'", bail_str));
+        }
+
+        // Charge severity filter
+        if let Some(severity) = &query.charge_severity {
+            let sev_str = match severity {
+                openward_core::ChargeSeverity::Minor => "Minor",
+                openward_core::ChargeSeverity::Moderate => "Moderate",
+                openward_core::ChargeSeverity::Serious => "Serious",
+            };
+            builder.conditions.push(format!("charge_severity = '{}'", sev_str));
+        }
+
+        // Has court date
+        if let Some(has_court) = query.has_court_date {
+            if has_court {
+                builder.conditions.push("next_court_date IS NOT NULL".into());
+            } else {
+                builder.conditions.push("next_court_date IS NULL".into());
+            }
+        }
+
+        // Court date overdue
+        if query.court_date_overdue == Some(true) {
+            builder.conditions.push("next_court_date < date('now')".into());
+        }
+
+        // Release overdue
+        if query.release_overdue == Some(true) {
+            builder.conditions.push(
+                "release_date < date('now') AND facility_status = 'Present'".into()
+            );
+        }
+
+        // Release within N days
+        if let Some(days) = query.release_within_days {
+            builder.conditions.push(format!(
+                "release_date <= date('now', '+{} days') AND release_date >= date('now')",
+                days
+            ));
+        }
+
+        // Remand review overdue
+        if query.remand_review_overdue == Some(true) {
+            builder.conditions.push("remand_review_due < date('now')".into());
         }
 
         // Intake date range

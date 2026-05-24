@@ -1,0 +1,1 @@
+ALTER TABLE notes ADD COLUMN note_type TEXT NOT NULL DEFAULT 'general';

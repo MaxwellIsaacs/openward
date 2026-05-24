@@ -6,10 +6,11 @@ use crate::analytics::{
 };
 use crate::detainee::{
     AdmissionRecord, BatchAdmission, CourtDate, CourtOutcome, Detainee, ReleaseRecord,
+    TransferRecord,
 };
 use crate::errors::DomainError;
 use crate::identifiers::{CourtDateId, DetaineeId, HousingUnitId, OperatorId};
-use crate::legal::{DetentionBasis, FacilityStatus};
+use crate::legal::{DetentionBasis, FacilityStatus, NoteType};
 use crate::warrant::CommitmentOrder;
 
 /// Error type for registry operations.
@@ -78,6 +79,41 @@ pub trait Registry: Send + Sync {
         outcome: CourtOutcome,
         operator: OperatorId,
     ) -> impl std::future::Future<Output = Result<CourtDate, RegistryError>> + Send;
+
+    // === Notes & Property ===
+    fn add_note(
+        &self,
+        detainee_id: DetaineeId,
+        content: String,
+        note_type: NoteType,
+        operator: OperatorId,
+    ) -> impl std::future::Future<Output = Result<Detainee, RegistryError>> + Send;
+
+    fn delete_note(
+        &self,
+        note_id: i64,
+        operator: OperatorId,
+    ) -> impl std::future::Future<Output = Result<(), RegistryError>> + Send;
+
+    fn add_property_item(
+        &self,
+        detainee_id: DetaineeId,
+        description: String,
+        quantity: u32,
+        operator: OperatorId,
+    ) -> impl std::future::Future<Output = Result<Detainee, RegistryError>> + Send;
+
+    fn return_property_item(
+        &self,
+        property_id: i64,
+        operator: OperatorId,
+    ) -> impl std::future::Future<Output = Result<(), RegistryError>> + Send;
+
+    // === Transfer ===
+    fn transfer(
+        &self,
+        record: TransferRecord,
+    ) -> impl std::future::Future<Output = Result<Detainee, RegistryError>> + Send;
 
     // === Release ===
     fn release(

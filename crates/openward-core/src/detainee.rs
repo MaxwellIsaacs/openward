@@ -270,6 +270,10 @@ pub enum CourtOutcome {
     AppealGranted,
     AppealDenied,
     ChargesWithdrawn,
+    Rescheduled {
+        new_date: NaiveDate,
+        reason: String,
+    },
 }
 
 // ===========================================================================

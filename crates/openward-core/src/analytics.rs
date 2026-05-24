@@ -132,6 +132,7 @@ pub enum FlagSeverity {
 /// Filter criteria for querying the detainee population.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PopulationQuery {
+    pub name_search: Option<String>,
     pub detention_basis: Option<DetentionBasisFilter>,
     pub bail_status: Option<BailStatusFilter>,
     pub charge_severity: Option<ChargeSeverity>,
@@ -517,6 +518,24 @@ impl std::fmt::Display for ModuleName {
             Self::Analytics => write!(f, "Analytics"),
             Self::Auth => write!(f, "Auth"),
             Self::Config => write!(f, "Config"),
+        }
+    }
+}
+
+impl std::str::FromStr for ModuleName {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Registry" => Ok(Self::Registry),
+            "Medical" => Ok(Self::Medical),
+            "Disciplinary" => Ok(Self::Disciplinary),
+            "Commissary" => Ok(Self::Commissary),
+            "Visitors" => Ok(Self::Visitors),
+            "Analytics" => Ok(Self::Analytics),
+            "Auth" => Ok(Self::Auth),
+            "Config" => Ok(Self::Config),
+            other => Err(format!("unknown module: {}", other)),
         }
     }
 }

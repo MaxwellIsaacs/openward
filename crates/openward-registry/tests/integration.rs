@@ -100,6 +100,7 @@ fn simple_admission(basis: DetentionBasis) -> AdmissionRecord {
             address: None,
         }],
         property: vec![PropertyItem {
+            id: 0,
             description: "Mobile phone".to_string(),
             quantity: 1,
             logged_date: today(),
@@ -3174,6 +3175,7 @@ async fn test_property_roundtrip() {
     let mut admission = simple_admission(police_custody_basis());
     admission.property = vec![
         PropertyItem {
+            id: 0,
             description: "Mobile phone".to_string(),
             quantity: 1,
             logged_date: today(),
@@ -3181,6 +3183,7 @@ async fn test_property_roundtrip() {
             returned: false,
         },
         PropertyItem {
+            id: 0,
             description: "Cash (MWK)".to_string(),
             quantity: 5000,
             logged_date: today(),
@@ -3188,6 +3191,7 @@ async fn test_property_roundtrip() {
             returned: false,
         },
         PropertyItem {
+            id: 0,
             description: "Belt".to_string(),
             quantity: 1,
             logged_date: today(),
@@ -3663,7 +3667,6 @@ async fn test_search_summary_name_format() {
 #[tokio::test]
 async fn test_overview_basis_breakdown_sums() {
     let reg = setup().await;
-    let op = operator();
 
     // Admit different basis types
     let mut a1 = simple_admission(police_custody_basis());
@@ -4105,4 +4108,325 @@ async fn test_search_by_on_trial() {
     let result = reg.search(query, op).await.unwrap();
     assert_eq!(result.total_matching, 1);
     assert_eq!(result.detainees[0].detention_basis, DetentionBasisLabel::OnTrial);
+}
+
+// ===========================================================================
+// Overview: SexBreakdown
+// ===========================================================================
+
+#[tokio::test]
+async fn test_overview_sex_breakdown() {
+    let reg = setup().await;
+
+    // 2 males, 1 female, 1 other
+    for (surname, sex) in [
+        ("A", Sex::Male),
+        ("B", Sex::Male),
+        ("C", Sex::Female),
+        ("D", Sex::Other),
+    ] {
+        let mut a = simple_admission(remand_basis());
+        a.identity = make_identity(surname, "X", sex);
+        reg.admit(a).await.unwrap();
+    }
+
+    let overview = reg.overview().await.unwrap();
+    assert_eq!(overview.sex_breakdown.male, 2);
+    assert_eq!(overview.sex_breakdown.female, 1);
+    assert_eq!(overview.sex_breakdown.other, 1);
+}
+
+// ===========================================================================
+// Overview: TimeDistribution
+// ===========================================================================
+
+#[tokio::test]
+async fn test_overview_time_distribution() {
+    let reg = setup().await;
+    let today_naive = Utc::now().date_naive();
+
+    // Admit detainees with specific intake dates to land in known buckets:
+    // - under_48h: intake today (0 days)
+    // - under_1_week: intake 3 days ago
+    // - under_1_month: intake 10 days ago
+    // - under_3_months: intake 60 days ago
+    // - under_6_months: intake 120 days ago
+    let intake_days_ago = [0i64, 3, 10, 60, 120];
+
+    for (i, days_ago) in intake_days_ago.iter().enumerate() {
+        let intake = today_naive - chrono::Duration::days(*days_ago);
+        let mut a = simple_admission(remand_basis());
+        a.identity = make_identity(&format!("D{}", i), "X", Sex::Male);
+        a.intake_date = PastDate::from_trusted(intake);
+        reg.admit(a).await.unwrap();
+    }
+
+    let overview = reg.overview().await.unwrap();
+    let td = &overview.time_distribution;
+
+    assert_eq!(td.under_48_hours, 1, "under_48h");
+    assert_eq!(td.under_1_week, 1, "under_1_week");
+    assert_eq!(td.under_1_month, 1, "under_1_month");
+    assert_eq!(td.under_3_months, 1, "under_3_months");
+    assert_eq!(td.under_6_months, 1, "under_6_months");
+    assert_eq!(td.under_1_year, 0);
+    assert_eq!(td.under_2_years, 0);
+    assert_eq!(td.over_2_years, 0);
+
+    // Median of [0, 3, 10, 60, 120] = 10
+    assert_eq!(td.median_days, 10);
+    // Mean = (0+3+10+60+120)/5 = 38.6
+    assert!((td.mean_days - 38.6).abs() < 0.1);
+}
+
+// ===========================================================================
+// Overview: FlagCounts
+// ===========================================================================
+
+#[tokio::test]
+async fn test_overview_flag_counts() {
+    let reg = setup().await;
+
+    // 1) NoLegalBasis detainee
+    let no_basis = DetentionBasis::NoLegalBasis {
+        discovered_date: today(),
+        circumstances: "Unknown".to_string(),
+    };
+    let mut a1 = simple_admission(no_basis);
+    a1.warrant = None;
+    a1.identity = make_identity("NoBasis", "X", Sex::Male);
+    reg.admit(a1).await.unwrap();
+
+    // 2) Bail granted but still held
+    let bail_basis = DetentionBasis::RemandAwaitingTrial {
+        first_appearance_date: today(),
+        next_court_date: Some(Utc::now().date_naive() + chrono::Duration::days(30)),
+        remand_review_due: None,
+        bail_status: BailStatus::Granted {
+            date: today(),
+            amount: Some(10_000),
+            conditions: vec![],
+        },
+        charges: vec![Charge {
+            id: ChargeId::new(),
+            description: "Theft".to_string(),
+            statute: None,
+            severity: ChargeSeverity::Minor,
+            date_of_alleged_offence: None,
+            count_number: None,
+        }],
+    };
+    let mut a2 = simple_admission(bail_basis);
+    a2.identity = make_identity("BailHeld", "X", Sex::Male);
+    reg.admit(a2).await.unwrap();
+
+    let overview = reg.overview().await.unwrap();
+
+    assert_eq!(overview.flag_counts.no_legal_basis, 1);
+    assert_eq!(overview.flag_counts.bail_granted_still_held, 1);
+    // Both detainees have no legal representation
+    assert_eq!(overview.flag_counts.no_legal_representation, 2);
+}
+
+// ===========================================================================
+// Overview: CriticalNumbers
+// ===========================================================================
+
+#[tokio::test]
+async fn test_overview_critical_numbers() {
+    let reg = setup().await;
+
+    // NoLegalBasis detainee → critical.no_legal_basis
+    let no_basis = DetentionBasis::NoLegalBasis {
+        discovered_date: today(),
+        circumstances: "Unknown".to_string(),
+    };
+    let mut a1 = simple_admission(no_basis);
+    a1.warrant = None;
+    a1.identity = make_identity("NoBasis", "X", Sex::Male);
+    reg.admit(a1).await.unwrap();
+
+    // BailGrantedStillHeld → critical.bail_granted_still_held
+    let bail_basis = DetentionBasis::RemandAwaitingTrial {
+        first_appearance_date: today(),
+        next_court_date: Some(Utc::now().date_naive() + chrono::Duration::days(30)),
+        remand_review_due: None,
+        bail_status: BailStatus::Granted {
+            date: today(),
+            amount: Some(10_000),
+            conditions: vec![],
+        },
+        charges: vec![Charge {
+            id: ChargeId::new(),
+            description: "Theft".to_string(),
+            statute: None,
+            severity: ChargeSeverity::Minor,
+            date_of_alleged_offence: None,
+            count_number: None,
+        }],
+    };
+    let mut a2 = simple_admission(bail_basis);
+    a2.identity = make_identity("BailHeld", "X", Sex::Male);
+    reg.admit(a2).await.unwrap();
+
+    let overview = reg.overview().await.unwrap();
+
+    assert_eq!(overview.critical.no_legal_basis, 1);
+    assert_eq!(overview.critical.bail_granted_still_held, 1);
+}
+
+// ===========================================================================
+// Overview: DailyCountStatus — NotStarted (no row for today)
+// ===========================================================================
+
+#[tokio::test]
+async fn test_overview_daily_count_status_not_started() {
+    let reg = setup().await;
+
+    // No daily count opened → NotStarted
+    let overview = reg.overview().await.unwrap();
+    assert!(matches!(overview.today_count_status, DailyCountStatus::NotStarted));
+}
+
+// ===========================================================================
+// Overview: DailyCountStatus — Open
+// ===========================================================================
+
+#[tokio::test]
+async fn test_overview_daily_count_status_open() {
+    let reg = setup().await;
+    let op = operator();
+
+    // Admit someone so the count is non-trivial
+    let mut a = simple_admission(remand_basis());
+    a.identity = make_identity("Open", "Count", Sex::Male);
+    reg.admit(a).await.unwrap();
+
+    // Open daily count for today
+    let today_naive = Utc::now().date_naive();
+    reg.open_daily_count(today_naive, op).await.unwrap();
+
+    let overview = reg.overview().await.unwrap();
+    match overview.today_count_status {
+        DailyCountStatus::Open { computed_closing } => {
+            assert!(computed_closing > 0);
+        }
+        other => panic!("expected Open, got {:?}", other),
+    }
+}
+
+// ===========================================================================
+// Overview: DailyCountStatus — Finalized
+// ===========================================================================
+
+#[tokio::test]
+async fn test_overview_daily_count_status_finalized() {
+    let reg = setup().await;
+    let op = operator();
+
+    // Admit someone
+    let mut a = simple_admission(remand_basis());
+    a.identity = make_identity("Final", "Count", Sex::Male);
+    reg.admit(a).await.unwrap();
+
+    let today_naive = Utc::now().date_naive();
+    reg.open_daily_count(today_naive, op).await.unwrap();
+    reg.finalize_daily_count(today_naive, op).await.unwrap();
+
+    let overview = reg.overview().await.unwrap();
+    match overview.today_count_status {
+        DailyCountStatus::Finalized { closing, .. } => {
+            assert!(closing > 0);
+        }
+        other => panic!("expected Finalized, got {:?}", other),
+    }
+}
+
+// ===========================================================================
+// Search: Flags and Statistics
+// ===========================================================================
+
+#[tokio::test]
+async fn test_search_returns_flags() {
+    let reg = setup().await;
+    let op = operator();
+
+    // Admit with no legal representation → NoLegalRepresentation flag
+    let a = simple_admission(police_custody_basis());
+    reg.admit(a).await.unwrap();
+
+    let result = reg
+        .search(PopulationQuery::default(), op)
+        .await
+        .unwrap();
+    assert_eq!(result.detainees.len(), 1);
+    let flags = &result.detainees[0].flags;
+    assert!(
+        !flags.is_empty(),
+        "Expected at least one flag on the detainee"
+    );
+    assert!(
+        flags.iter().any(|f| matches!(f, Flag::NoLegalRepresentation)),
+        "Expected NoLegalRepresentation flag, got: {:?}",
+        flags
+    );
+}
+
+#[tokio::test]
+async fn test_search_statistics_populated() {
+    let reg = setup().await;
+    let op = operator();
+
+    // Admit two detainees with different bases
+    let a1 = simple_admission(police_custody_basis());
+    reg.admit(a1).await.unwrap();
+
+    let mut a2 = simple_admission(remand_basis());
+    a2.identity = make_identity("Phiri", "Grace", Sex::Female);
+    reg.admit(a2).await.unwrap();
+
+    let result = reg
+        .search(PopulationQuery::default(), op)
+        .await
+        .unwrap();
+
+    let stats = &result.statistics;
+    assert_eq!(stats.total, 2);
+    assert_eq!(stats.by_detention_basis.police_custody, 1);
+    assert_eq!(stats.by_detention_basis.remand, 1);
+    assert_eq!(stats.by_sex.male, 1);
+    assert_eq!(stats.by_sex.female, 1);
+    assert_eq!(stats.without_legal_representation, 2);
+    assert!(stats.flag_counts.no_legal_representation >= 2);
+    assert!(stats.facility_capacity > 0);
+}
+
+#[tokio::test]
+async fn test_search_statistics_reflect_full_result_set() {
+    let reg = setup().await;
+    let op = operator();
+
+    // Admit 5 detainees
+    for i in 0..5 {
+        let mut a = simple_admission(police_custody_basis());
+        a.identity = make_identity(&format!("Surname{}", i), "Test", Sex::Male);
+        reg.admit(a).await.unwrap();
+    }
+
+    // Search with limit=2 (paginated)
+    let query = PopulationQuery {
+        limit: Some(2),
+        ..Default::default()
+    };
+    let result = reg.search(query, op).await.unwrap();
+
+    // Page has only 2 results
+    assert_eq!(result.detainees.len(), 2);
+    // But total_matching covers all 5
+    assert_eq!(result.total_matching, 5);
+    // Statistics must reflect ALL 5, not just the page
+    assert_eq!(result.statistics.total, 5);
+    assert_eq!(result.statistics.by_sex.male, 5);
+    assert_eq!(result.statistics.by_detention_basis.police_custody, 5);
+    assert_eq!(result.statistics.without_legal_representation, 5);
 }

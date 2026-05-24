@@ -365,6 +365,7 @@ pub struct EmergencyContact {
 /// Personal belongings logged at intake.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropertyItem {
+    pub id: i64,
     pub description: String,
     pub quantity: u32,
     pub logged_date: PastDate,
@@ -372,12 +373,43 @@ pub struct PropertyItem {
     pub returned: bool,
 }
 
+/// Classification for notes attached to detainee records.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NoteType {
+    General,
+    Medical,
+    Legal,
+    Behavioral,
+}
+
+impl NoteType {
+    pub fn from_str_lossy(s: &str) -> Self {
+        match s {
+            "medical" => NoteType::Medical,
+            "legal" => NoteType::Legal,
+            "behavioral" => NoteType::Behavioral,
+            _ => NoteType::General,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NoteType::General => "general",
+            NoteType::Medical => "medical",
+            NoteType::Legal => "legal",
+            NoteType::Behavioral => "behavioral",
+        }
+    }
+}
+
 /// A timestamped free-text note attached to a detainee record.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Note {
+    pub id: i64,
     pub content: String,
     pub author: OperatorId,
     pub timestamp: DateTime<Utc>,
+    pub note_type: NoteType,
 }
 
 /// Simplified bail status label for display in list views.

@@ -25,6 +25,489 @@ impl SqliteRegistry {
         &self.config
     }
 
+    // === Read-only convenience methods ===
+
+    /// Get all court dates for a specific detainee, ordered by scheduled date (newest first).
+    pub async fn court_dates_for_detainee(&self, id: DetaineeId) -> Result<Vec<CourtDate>, RegistryError> {
+        let id_str = id.to_string();
+
+        let rows: Vec<CourtDateRow> = sqlx::query_as(
+            "SELECT id, detainee_id, scheduled_date, court_name, purpose, outcome \
+             FROM court_dates WHERE detainee_id = ? ORDER BY scheduled_date DESC"
+        )
+        .bind(&id_str)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        rows.into_iter()
+            .map(row_to_court_date)
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    /// Ensure at least one default housing unit exists.
+    /// Called during initialization to make the system turnkey.
+    pub async fn seed_default_housing(&self) -> Result<(), RegistryError> {
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM housing_units")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        if count.0 == 0 {
+            let id = uuid::Uuid::new_v4().to_string();
+            sqlx::query(
+                "INSERT INTO housing_units (id, name, capacity, unit_type) \
+                 VALUES (?, 'Batiment communal', ?, 'General')"
+            )
+            .bind(&id)
+            .bind(self.config.capacity as i32)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+        }
+
+        Ok(())
+    }
+
+    /// Get a single housing unit by ID.
+    pub async fn get_housing_unit(&self, id: HousingUnitId) -> Result<HousingUnit, RegistryError> {
+        let id_str = id.as_uuid().to_string();
+
+        let row: HousingUnitRow = sqlx::query_as(
+            "SELECT id, name, capacity, unit_type, designated_sex, designated_age_group \
+             FROM housing_units WHERE id = ?"
+        )
+        .bind(&id_str)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(format!("housing unit not found: {}", e)))?;
+
+        row_to_housing_unit(row)
+    }
+
+    /// Create a new housing unit.
+    pub async fn create_housing_unit(&self, unit: HousingUnit) -> Result<HousingUnit, RegistryError> {
+        let id_str = unit.id.as_uuid().to_string();
+        let type_str = housing_type_str(&unit.unit_type);
+        let sex_str = unit.designated_sex.as_ref().map(|s| format!("{:?}", s));
+        let age_str = unit.designated_age_group.as_ref().map(|a| format!("{:?}", a));
+
+        sqlx::query(
+            "INSERT INTO housing_units (id, name, capacity, unit_type, designated_sex, designated_age_group) \
+             VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .bind(&id_str)
+        .bind(&unit.name)
+        .bind(unit.capacity as i32)
+        .bind(type_str)
+        .bind(&sex_str)
+        .bind(&age_str)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        Ok(unit)
+    }
+
+    /// Update an existing housing unit.
+    pub async fn update_housing_unit(&self, unit: HousingUnit) -> Result<HousingUnit, RegistryError> {
+        let id_str = unit.id.as_uuid().to_string();
+        let type_str = housing_type_str(&unit.unit_type);
+        let sex_str = unit.designated_sex.as_ref().map(|s| format!("{:?}", s));
+        let age_str = unit.designated_age_group.as_ref().map(|a| format!("{:?}", a));
+
+        let result = sqlx::query(
+            "UPDATE housing_units SET name = ?, capacity = ?, unit_type = ?, \
+             designated_sex = ?, designated_age_group = ? WHERE id = ?"
+        )
+        .bind(&unit.name)
+        .bind(unit.capacity as i32)
+        .bind(type_str)
+        .bind(&sex_str)
+        .bind(&age_str)
+        .bind(&id_str)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RegistryError::Database("housing unit not found".into()));
+        }
+
+        Ok(unit)
+    }
+
+    /// Delete a housing unit. Fails if detainees are currently assigned to it.
+    pub async fn delete_housing_unit(&self, id: HousingUnitId) -> Result<(), RegistryError> {
+        let id_str = id.as_uuid().to_string();
+
+        // Check for assigned detainees
+        let count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM detainees WHERE housing_unit_id = ? \
+             AND facility_status IN ('Present', 'InCourt', 'InHospital')"
+        )
+        .bind(&id_str)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        if count.0 > 0 {
+            return Err(RegistryError::Database(
+                format!("{} detenu(s) encore assigne(s) a cette unite", count.0)
+            ));
+        }
+
+        // Clear housing_unit_id from any released/inactive detainees referencing this unit
+        sqlx::query(
+            "UPDATE detainees SET housing_unit_id = NULL WHERE housing_unit_id = ?"
+        )
+        .bind(&id_str)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let result = sqlx::query("DELETE FROM housing_units WHERE id = ?")
+            .bind(&id_str)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RegistryError::Database("housing unit not found".into()));
+        }
+
+        Ok(())
+    }
+
+    /// Count active detainees assigned to a housing unit.
+    pub async fn housing_unit_occupancy(&self, id: HousingUnitId) -> Result<u32, RegistryError> {
+        let id_str = id.as_uuid().to_string();
+
+        let count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM detainees WHERE housing_unit_id = ? \
+             AND facility_status IN ('Present', 'InCourt', 'InHospital')"
+        )
+        .bind(&id_str)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        Ok(count.0 as u32)
+    }
+
+    /// Get all housing units, ordered by name.
+    pub async fn housing_units(&self) -> Result<Vec<HousingUnit>, RegistryError> {
+        let rows: Vec<HousingUnitRow> = sqlx::query_as(
+            "SELECT id, name, capacity, unit_type, designated_sex, designated_age_group \
+             FROM housing_units ORDER BY name"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        rows.into_iter()
+            .map(row_to_housing_unit)
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    /// Get upcoming court dates (no outcome yet and scheduled for today or later).
+    /// Returns tuples of (CourtDate, detainee_name, detainee_id_string).
+    pub async fn upcoming_court_dates(&self, limit: u32) -> Result<Vec<(CourtDate, String, String)>, RegistryError> {
+        let today = chrono::Utc::now().date_naive().to_string();
+
+        let rows: Vec<CourtDateWithDetaineeRow> = sqlx::query_as(
+            "SELECT cd.id, cd.detainee_id, cd.scheduled_date, cd.court_name, cd.purpose, cd.outcome, \
+                    d.surname, d.given_names \
+             FROM court_dates cd \
+             JOIN detainees d ON cd.detainee_id = d.id \
+             WHERE cd.outcome IS NULL AND cd.scheduled_date >= ? \
+             ORDER BY cd.scheduled_date ASC \
+             LIMIT ?"
+        )
+        .bind(&today)
+        .bind(limit as i32)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let court_date = row_to_court_date(CourtDateRow {
+                    id: row.id.clone(),
+                    detainee_id: row.detainee_id.clone(),
+                    scheduled_date: row.scheduled_date,
+                    court_name: row.court_name,
+                    purpose: row.purpose,
+                    outcome: row.outcome,
+                })?;
+                let name = format!("{}, {}", row.surname, row.given_names);
+                Ok((court_date, name, row.detainee_id))
+            })
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    /// Get recent court dates (have an outcome or scheduled before today).
+    /// Returns tuples of (CourtDate, detainee_name, detainee_id_string).
+    pub async fn recent_court_dates(&self, limit: u32) -> Result<Vec<(CourtDate, String, String)>, RegistryError> {
+        let today = chrono::Utc::now().date_naive().to_string();
+
+        let rows: Vec<CourtDateWithDetaineeRow> = sqlx::query_as(
+            "SELECT cd.id, cd.detainee_id, cd.scheduled_date, cd.court_name, cd.purpose, cd.outcome, \
+                    d.surname, d.given_names \
+             FROM court_dates cd \
+             JOIN detainees d ON cd.detainee_id = d.id \
+             WHERE cd.outcome IS NOT NULL OR cd.scheduled_date < ? \
+             ORDER BY cd.scheduled_date DESC \
+             LIMIT ?"
+        )
+        .bind(&today)
+        .bind(limit as i32)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let court_date = row_to_court_date(CourtDateRow {
+                    id: row.id.clone(),
+                    detainee_id: row.detainee_id.clone(),
+                    scheduled_date: row.scheduled_date,
+                    court_name: row.court_name,
+                    purpose: row.purpose,
+                    outcome: row.outcome,
+                })?;
+                let name = format!("{}, {}", row.surname, row.given_names);
+                Ok((court_date, name, row.detainee_id))
+            })
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    /// Get a daily count for a specific date if it exists.
+    pub async fn get_daily_count_for_date(&self, date: NaiveDate) -> Result<Option<DailyCount>, RegistryError> {
+        let date_str = date.to_string();
+
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT id FROM daily_counts WHERE date = ?"
+        )
+        .bind(&date_str)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        match row {
+            Some((id,)) => Ok(Some(self.load_daily_count(&id).await?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Get a single court date by ID.
+    pub async fn get_court_date(&self, id: CourtDateId) -> Result<CourtDate, RegistryError> {
+        let id_str = id.as_uuid().to_string();
+
+        let row: CourtDateRow = sqlx::query_as(
+            "SELECT id, detainee_id, scheduled_date, court_name, purpose, outcome \
+             FROM court_dates WHERE id = ?"
+        )
+        .bind(&id_str)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        row_to_court_date(row)
+    }
+
+    /// Get recent transfers with detainee names joined.
+    pub async fn recent_transfers(&self, limit: u32) -> Result<Vec<(TransferRecord, String)>, RegistryError> {
+        let rows: Vec<(String, String, Option<String>, Option<String>, String, String, String, String, String)> = sqlx::query_as(
+            "SELECT t.id, t.detainee_id, t.from_facility, t.to_facility, t.transfer_date, t.reason, t.authorized_by, \
+                    d.surname, d.given_names \
+             FROM transfers t \
+             JOIN detainees d ON t.detainee_id = d.id \
+             ORDER BY t.transfer_date DESC \
+             LIMIT ?"
+        )
+        .bind(limit as i32)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let record = TransferRecord {
+                    id: parse_uuid(&row.0)?,
+                    detainee_id: DetaineeId::from_uuid(parse_uuid(&row.1)?),
+                    from_facility: row.2,
+                    to_facility: row.3,
+                    transfer_date: PastDate::from_trusted(parse_date(&row.4)?),
+                    reason: row.5,
+                    authorized_by: OperatorId::from_uuid(parse_uuid(&row.6)?),
+                };
+                let name = format!("{}, {}", row.7, row.8);
+                Ok((record, name))
+            })
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    /// Update a court date (only if outcome has not been recorded).
+    pub async fn update_court_date(
+        &self,
+        court_date_id: CourtDateId,
+        scheduled_date: NaiveDate,
+        court_name: String,
+        purpose: CourtPurpose,
+        operator: OperatorId,
+    ) -> Result<CourtDate, RegistryError> {
+        let id_str = court_date_id.as_uuid().to_string();
+        let now_str = Utc::now().to_rfc3339();
+        let purpose_json = serde_json::to_string(&purpose)
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        // Only update if outcome is NULL
+        let result = sqlx::query(
+            "UPDATE court_dates SET scheduled_date = ?, court_name = ?, purpose = ?, updated_at = ? \
+             WHERE id = ? AND outcome IS NULL"
+        )
+        .bind(scheduled_date.to_string())
+        .bind(&court_name)
+        .bind(&purpose_json)
+        .bind(&now_str)
+        .bind(&id_str)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(RegistryError::Database(
+                "court date not found or outcome already recorded".into()
+            ));
+        }
+
+        // Audit
+        let after = serde_json::json!({
+            "scheduled_date": scheduled_date.to_string(),
+            "court_name": court_name,
+            "purpose": purpose_json,
+        });
+        let cd = self.get_court_date(court_date_id).await?;
+        let _ = audit::create_audit_entry(
+            &self.pool, operator, ModuleName::Registry,
+            "update_court_date", Some(cd.detainee_id), None, Some(after),
+        ).await;
+
+        Ok(cd)
+    }
+
+    // === Export / backup query helpers ===
+
+    /// Load daily counts within a date range.
+    pub async fn daily_counts_in_range(
+        &self,
+        from: NaiveDate,
+        to: NaiveDate,
+    ) -> Result<Vec<DailyCount>, RegistryError> {
+        let from_str = from.to_string();
+        let to_str = to.to_string();
+
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT id FROM daily_counts WHERE date BETWEEN ? AND ? ORDER BY date"
+        )
+        .bind(&from_str)
+        .bind(&to_str)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let mut counts = Vec::with_capacity(rows.len());
+        for (id,) in rows {
+            counts.push(self.load_daily_count(&id).await?);
+        }
+        Ok(counts)
+    }
+
+    /// Load audit entries within a timestamp range.
+    pub async fn audit_entries_in_range(
+        &self,
+        from: NaiveDate,
+        to: NaiveDate,
+    ) -> Result<Vec<AuditEntry>, RegistryError> {
+        let from_str = format!("{}T00:00:00+00:00", from);
+        let to_str = format!("{}T23:59:59+00:00", to);
+
+        let rows: Vec<AuditRow> = sqlx::query_as(
+            "SELECT id, timestamp, operator, module, action, target, \
+             before_data, after_data, self_hash, chain_hash, epoch \
+             FROM audit_entries WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp"
+        )
+        .bind(&from_str)
+        .bind(&to_str)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        rows.into_iter()
+            .map(row_to_audit_entry)
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    /// Load all active detainees as summaries (for CSV export, no pagination).
+    pub async fn all_active_detainees_for_export(&self) -> Result<Vec<DetaineeSummary>, RegistryError> {
+        let today = Utc::now().date_naive();
+
+        let rows: Vec<DetaineeRow> = sqlx::query_as(
+            "SELECT id, surname, given_names, preferred_name, sex, date_of_birth, \
+             nationality, national_id, detention_basis_label, detention_basis_data, \
+             facility_status, intake_date, housing_unit_id, identity_extra, \
+             legal_reference, legal_representation, emergency_contacts \
+             FROM detainees WHERE facility_status IN ('Present', 'InCourt', 'InHospital') \
+             ORDER BY surname, given_names"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let housing_units = self.housing_units().await?;
+
+        let mut summaries = Vec::with_capacity(rows.len());
+        for row in &rows {
+            let id = DetaineeId::from_uuid(parse_uuid(&row.id)?);
+            let intake = parse_date(&row.intake_date)?;
+            let days_held = (today - intake).num_days().max(0) as u32;
+            let basis_label = parse_basis_label(&row.detention_basis_label);
+
+            let detainee = self.load_detainee(id).await?;
+            let flags = crate::flags::compute_flags(&detainee, &self.config, &housing_units);
+
+            // Resolve housing unit name
+            let housing_name = match &row.housing_unit_id {
+                Some(uid) => {
+                    let uuid = parse_uuid(uid).ok();
+                    uuid.and_then(|u| {
+                        housing_units.iter().find(|hu| hu.id.as_uuid() == &u).map(|hu| hu.name.clone())
+                    })
+                }
+                None => None,
+            };
+
+            summaries.push(DetaineeSummary {
+                id,
+                name: format!("{}, {}", row.surname, row.given_names),
+                sex: parse_sex(&row.sex),
+                age: None,
+                detention_basis: basis_label,
+                intake_date: PastDate::from_trusted(intake),
+                days_held,
+                bail_status: None,
+                next_court_date: None,
+                release_date: None,
+                housing_unit: housing_name,
+                has_legal_representation: row.legal_representation.is_some(),
+                flags,
+            });
+        }
+
+        Ok(summaries)
+    }
+
     // === Internal helpers ===
 
     /// Load a full Detainee from the database by ID.
@@ -61,7 +544,7 @@ impl SqliteRegistry {
 
         // Load property items
         let property_rows: Vec<PropertyRow> = sqlx::query_as(
-            "SELECT description, quantity, logged_date, logged_by, returned \
+            "SELECT id, description, quantity, logged_date, logged_by, returned \
              FROM property_items WHERE detainee_id = ?"
         )
         .bind(&id_str)
@@ -71,7 +554,7 @@ impl SqliteRegistry {
 
         // Load notes
         let note_rows: Vec<NoteRow> = sqlx::query_as(
-            "SELECT content, author, timestamp FROM notes WHERE detainee_id = ? ORDER BY timestamp"
+            "SELECT id, content, author, timestamp, note_type FROM notes WHERE detainee_id = ? ORDER BY timestamp DESC"
         )
         .bind(&id_str)
         .fetch_all(&self.pool)
@@ -90,6 +573,7 @@ impl SqliteRegistry {
         // Reconstruct the Detainee from rows
         row_to_detainee(row, warrant_rows, property_rows, note_rows, aliases)
     }
+
 }
 
 // === Row types for sqlx query_as ===
@@ -138,6 +622,7 @@ struct WarrantRow {
 
 #[derive(sqlx::FromRow)]
 struct PropertyRow {
+    id: i64,
     description: String,
     quantity: i32,
     logged_date: String,
@@ -147,9 +632,11 @@ struct PropertyRow {
 
 #[derive(sqlx::FromRow)]
 struct NoteRow {
+    id: i64,
     content: String,
     author: String,
     timestamp: String,
+    note_type: String,
 }
 
 #[derive(sqlx::FromRow)]
@@ -176,6 +663,53 @@ struct DailyCountRow {
     finalized_at: Option<String>,
 }
 
+#[derive(sqlx::FromRow)]
+struct CourtDateRow {
+    id: String,
+    detainee_id: String,
+    scheduled_date: String,
+    court_name: String,
+    purpose: String,
+    outcome: Option<String>,
+}
+
+#[derive(sqlx::FromRow)]
+struct CourtDateWithDetaineeRow {
+    id: String,
+    detainee_id: String,
+    scheduled_date: String,
+    court_name: String,
+    purpose: String,
+    outcome: Option<String>,
+    surname: String,
+    given_names: String,
+}
+
+#[derive(sqlx::FromRow)]
+struct HousingUnitRow {
+    id: String,
+    name: String,
+    capacity: i64,
+    unit_type: String,
+    designated_sex: Option<String>,
+    designated_age_group: Option<String>,
+}
+
+#[derive(sqlx::FromRow)]
+struct AuditRow {
+    id: String,
+    timestamp: String,
+    operator: String,
+    module: String,
+    action: String,
+    target: Option<String>,
+    before_data: Option<String>,
+    after_data: Option<String>,
+    self_hash: Vec<u8>,
+    chain_hash: Vec<u8>,
+    epoch: i64,
+}
+
 // === Row → Domain type conversions ===
 
 fn parse_uuid(s: &str) -> Result<uuid::Uuid, RegistryError> {
@@ -192,6 +726,19 @@ fn parse_sex(s: &str) -> Sex {
         "Male" => Sex::Male,
         "Female" => Sex::Female,
         _ => Sex::Other,
+    }
+}
+
+fn parse_basis_label(s: &str) -> DetentionBasisLabel {
+    match s {
+        "NoLegalBasis" => DetentionBasisLabel::NoLegalBasis,
+        "PoliceCustody" => DetentionBasisLabel::PoliceCustody,
+        "Remand" => DetentionBasisLabel::Remand,
+        "OnTrial" => DetentionBasisLabel::OnTrial,
+        "ConvictedUnsentenced" => DetentionBasisLabel::ConvictedUnsentenced,
+        "Sentenced" => DetentionBasisLabel::Sentenced,
+        "Appeal" => DetentionBasisLabel::Appeal,
+        _ => DetentionBasisLabel::NoLegalBasis,
     }
 }
 
@@ -281,6 +828,7 @@ fn row_to_detainee(
         .into_iter()
         .map(|pr| {
             Ok(PropertyItem {
+                id: pr.id,
                 description: pr.description,
                 quantity: pr.quantity as u32,
                 logged_date: PastDate::from_trusted(parse_date(&pr.logged_date)?),
@@ -298,9 +846,11 @@ fn row_to_detainee(
                 .map(|dt| dt.with_timezone(&Utc))
                 .unwrap_or_else(|_| Utc::now());
             Ok(Note {
+                id: nr.id,
                 content: nr.content,
                 author: OperatorId::from_uuid(parse_uuid(&nr.author)?),
                 timestamp: ts,
+                note_type: NoteType::from_str_lossy(&nr.note_type),
             })
         })
         .collect::<Result<Vec<_>, RegistryError>>()?;
@@ -350,6 +900,121 @@ fn row_to_warrant(row: WarrantRow) -> Result<CommitmentOrder, RegistryError> {
             .map(|s| parse_uuid(s).map(BatchId::from_uuid))
             .transpose()?,
         document_hash: row.document_hash,
+    })
+}
+
+fn row_to_court_date(row: CourtDateRow) -> Result<CourtDate, RegistryError> {
+    let purpose: CourtPurpose = serde_json::from_str(&row.purpose)
+        .unwrap_or(CourtPurpose::Other);
+
+    let outcome: Option<CourtOutcome> = row.outcome
+        .as_deref()
+        .map(|s| serde_json::from_str(s))
+        .transpose()
+        .map_err(|e| RegistryError::Database(format!("invalid court outcome JSON: {}", e)))?;
+
+    Ok(CourtDate {
+        id: CourtDateId::from_uuid(parse_uuid(&row.id)?),
+        detainee_id: DetaineeId::from_uuid(parse_uuid(&row.detainee_id)?),
+        scheduled_date: parse_date(&row.scheduled_date)?,
+        court_name: row.court_name,
+        purpose,
+        outcome,
+    })
+}
+
+fn parse_module_name(s: &str) -> ModuleName {
+    match s {
+        "Registry" => ModuleName::Registry,
+        "Medical" => ModuleName::Medical,
+        "Disciplinary" => ModuleName::Disciplinary,
+        "Commissary" => ModuleName::Commissary,
+        "Visitors" => ModuleName::Visitors,
+        "Analytics" => ModuleName::Analytics,
+        "Auth" => ModuleName::Auth,
+        "Config" => ModuleName::Config,
+        _ => ModuleName::Registry,
+    }
+}
+
+fn row_to_audit_entry(row: AuditRow) -> Result<AuditEntry, RegistryError> {
+    let id = parse_uuid(&row.id)?;
+    let timestamp = chrono::DateTime::parse_from_rfc3339(&row.timestamp)
+        .map(|dt| dt.with_timezone(&Utc))
+        .map_err(|e| RegistryError::Database(format!("invalid audit timestamp: {}", e)))?;
+    let operator = OperatorId::from_uuid(parse_uuid(&row.operator)?);
+    let module = parse_module_name(&row.module);
+    let target = row.target.as_deref()
+        .map(|s| parse_uuid(s).map(DetaineeId::from_uuid))
+        .transpose()?;
+    let before: Option<serde_json::Value> = row.before_data.as_deref()
+        .map(|s| serde_json::from_str(s))
+        .transpose()
+        .map_err(|e| RegistryError::Database(format!("invalid audit before JSON: {}", e)))?;
+    let after: Option<serde_json::Value> = row.after_data.as_deref()
+        .map(|s| serde_json::from_str(s))
+        .transpose()
+        .map_err(|e| RegistryError::Database(format!("invalid audit after JSON: {}", e)))?;
+
+    let mut self_hash = [0u8; 32];
+    if row.self_hash.len() == 32 {
+        self_hash.copy_from_slice(&row.self_hash);
+    }
+    let mut chain_hash = [0u8; 32];
+    if row.chain_hash.len() == 32 {
+        chain_hash.copy_from_slice(&row.chain_hash);
+    }
+
+    Ok(AuditEntry {
+        id,
+        timestamp,
+        operator,
+        module,
+        action: row.action,
+        target,
+        before,
+        after,
+        self_hash,
+        chain_hash,
+        epoch: row.epoch as u64,
+    })
+}
+
+fn housing_type_str(ht: &HousingType) -> &'static str {
+    match ht {
+        HousingType::General => "General",
+        HousingType::Medical => "Medical",
+        HousingType::Isolation => "Isolation",
+        HousingType::Protective => "Protective",
+        HousingType::PreTrial => "PreTrial",
+    }
+}
+
+fn row_to_housing_unit(row: HousingUnitRow) -> Result<HousingUnit, RegistryError> {
+    let unit_type = match row.unit_type.as_str() {
+        "General" => HousingType::General,
+        "Medical" => HousingType::Medical,
+        "Isolation" => HousingType::Isolation,
+        "Protective" => HousingType::Protective,
+        "PreTrial" => HousingType::PreTrial,
+        _ => HousingType::General,
+    };
+
+    let designated_sex = row.designated_sex.as_deref().map(parse_sex);
+
+    let designated_age_group = row.designated_age_group.as_deref().and_then(|s| match s {
+        "Juvenile" => Some(AgeGroup::Juvenile),
+        "Adult" => Some(AgeGroup::Adult),
+        _ => None,
+    });
+
+    Ok(HousingUnit {
+        id: HousingUnitId::from_uuid(parse_uuid(&row.id)?),
+        name: row.name,
+        capacity: row.capacity as u32,
+        unit_type,
+        designated_sex,
+        designated_age_group,
     })
 }
 
@@ -453,7 +1118,7 @@ impl Registry for SqliteRegistry {
         // Insert intake note if provided
         if let Some(note_text) = &record.notes {
             sqlx::query(
-                "INSERT INTO notes (detainee_id, content, author, timestamp) VALUES (?, ?, ?, ?)"
+                "INSERT INTO notes (detainee_id, content, author, timestamp, note_type) VALUES (?, ?, ?, ?, 'general')"
             )
             .bind(&id_str)
             .bind(note_text)
@@ -468,7 +1133,7 @@ impl Registry for SqliteRegistry {
         if let Some(medical_notes) = &record.intake_medical_notes {
             let medical_note = format!("[INTAKE MEDICAL] {}", medical_notes);
             sqlx::query(
-                "INSERT INTO notes (detainee_id, content, author, timestamp) VALUES (?, ?, ?, ?)"
+                "INSERT INTO notes (detainee_id, content, author, timestamp, note_type) VALUES (?, ?, ?, ?, 'medical')"
             )
             .bind(&id_str)
             .bind(&medical_note)
@@ -630,7 +1295,7 @@ impl Registry for SqliteRegistry {
         // Add note if provided
         if let Some(note_text) = notes {
             sqlx::query(
-                "INSERT INTO notes (detainee_id, content, author, timestamp) VALUES (?, ?, ?, ?)"
+                "INSERT INTO notes (detainee_id, content, author, timestamp, note_type) VALUES (?, ?, ?, ?, 'general')"
             )
             .bind(&id_str)
             .bind(&note_text)
@@ -800,14 +1465,248 @@ impl Registry for SqliteRegistry {
             "record_court_outcome", Some(detainee_id), None, after,
         ).await;
 
+        let court_name = row.3;
+        let purpose = serde_json::from_str(&row.4).unwrap_or(CourtPurpose::Other);
+
+        // If Rescheduled, automatically create a new court date
+        if let CourtOutcome::Rescheduled { new_date, .. } = &outcome {
+            let new_id = CourtDateId::new();
+            let new_id_str = new_id.as_uuid().to_string();
+            let det_id_str = detainee_id.to_string();
+            let purpose_json = serde_json::to_string(&purpose)
+                .unwrap_or_else(|_| "\"Other\"".to_string());
+
+            sqlx::query(
+                "INSERT INTO court_dates (id, detainee_id, scheduled_date, court_name, purpose, created_at, updated_at) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&new_id_str)
+            .bind(&det_id_str)
+            .bind(new_date.to_string())
+            .bind(&court_name)
+            .bind(&purpose_json)
+            .bind(&now_str)
+            .bind(&now_str)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+        }
+
         Ok(CourtDate {
             id: court_date_id,
             detainee_id,
             scheduled_date: parse_date(&row.2)?,
-            court_name: row.3,
-            purpose: serde_json::from_str(&row.4).unwrap_or(CourtPurpose::Other),
+            court_name,
+            purpose,
             outcome: Some(outcome),
         })
+    }
+
+    async fn add_note(
+        &self,
+        detainee_id: DetaineeId,
+        content: String,
+        note_type: NoteType,
+        operator: OperatorId,
+    ) -> Result<Detainee, RegistryError> {
+        let _ = self.load_detainee(detainee_id).await?;
+        let id_str = detainee_id.to_string();
+        let now_str = Utc::now().to_rfc3339();
+
+        sqlx::query(
+            "INSERT INTO notes (detainee_id, content, author, timestamp, note_type) VALUES (?, ?, ?, ?, ?)"
+        )
+        .bind(&id_str)
+        .bind(&content)
+        .bind(operator.as_uuid().to_string())
+        .bind(&now_str)
+        .bind(note_type.as_str())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let after = serde_json::json!({ "content": content, "note_type": note_type.as_str() });
+        let _ = audit::create_audit_entry(
+            &self.pool, operator, ModuleName::Registry,
+            "add_note", Some(detainee_id), None, Some(after),
+        ).await;
+
+        self.load_detainee(detainee_id).await
+    }
+
+    async fn delete_note(
+        &self,
+        note_id: i64,
+        operator: OperatorId,
+    ) -> Result<(), RegistryError> {
+        // Verify the note exists and get detainee_id for audit
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT detainee_id FROM notes WHERE id = ?"
+        )
+        .bind(note_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let detainee_id_str = row
+            .ok_or_else(|| RegistryError::Database("note not found".into()))?
+            .0;
+
+        sqlx::query("DELETE FROM notes WHERE id = ?")
+            .bind(note_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let det_id = DetaineeId::from_uuid(parse_uuid(&detainee_id_str)?);
+        let before = serde_json::json!({ "note_id": note_id });
+        let _ = audit::create_audit_entry(
+            &self.pool, operator, ModuleName::Registry,
+            "delete_note", Some(det_id), Some(before), None,
+        ).await;
+
+        Ok(())
+    }
+
+    async fn add_property_item(
+        &self,
+        detainee_id: DetaineeId,
+        description: String,
+        quantity: u32,
+        operator: OperatorId,
+    ) -> Result<Detainee, RegistryError> {
+        let _ = self.load_detainee(detainee_id).await?;
+        let id_str = detainee_id.to_string();
+        let today = Utc::now().date_naive().to_string();
+
+        sqlx::query(
+            "INSERT INTO property_items (detainee_id, description, quantity, logged_date, logged_by, returned) \
+             VALUES (?, ?, ?, ?, ?, 0)"
+        )
+        .bind(&id_str)
+        .bind(&description)
+        .bind(quantity as i32)
+        .bind(&today)
+        .bind(operator.as_uuid().to_string())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let after = serde_json::json!({ "description": description, "quantity": quantity });
+        let _ = audit::create_audit_entry(
+            &self.pool, operator, ModuleName::Registry,
+            "add_property_item", Some(detainee_id), None, Some(after),
+        ).await;
+
+        self.load_detainee(detainee_id).await
+    }
+
+    async fn return_property_item(
+        &self,
+        property_id: i64,
+        operator: OperatorId,
+    ) -> Result<(), RegistryError> {
+        // Verify it exists and get detainee_id
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT detainee_id FROM property_items WHERE id = ?"
+        )
+        .bind(property_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let detainee_id_str = row
+            .ok_or_else(|| RegistryError::Database("property item not found".into()))?
+            .0;
+
+        sqlx::query("UPDATE property_items SET returned = 1 WHERE id = ?")
+            .bind(property_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let det_id = DetaineeId::from_uuid(parse_uuid(&detainee_id_str)?);
+        let before = serde_json::json!({ "property_id": property_id, "returned": false });
+        let after = serde_json::json!({ "property_id": property_id, "returned": true });
+        let _ = audit::create_audit_entry(
+            &self.pool, operator, ModuleName::Registry,
+            "return_property_item", Some(det_id), Some(before), Some(after),
+        ).await;
+
+        Ok(())
+    }
+
+    async fn transfer(&self, record: TransferRecord) -> Result<Detainee, RegistryError> {
+        let current = self.load_detainee(record.detainee_id).await?;
+
+        // Check detainee is active
+        if !matches!(
+            current.facility_status,
+            FacilityStatus::Present | FacilityStatus::InCourt | FacilityStatus::InHospital
+        ) {
+            return Err(RegistryError::Domain(DomainError::InactiveDetainee {
+                id: record.detainee_id,
+            }));
+        }
+
+        let id_str = record.detainee_id.to_string();
+        let now_str = Utc::now().to_rfc3339();
+
+        // INSERT into transfers table
+        sqlx::query(
+            "INSERT INTO transfers (id, detainee_id, from_facility, to_facility, transfer_date, reason, authorized_by) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(record.id.to_string())
+        .bind(&id_str)
+        .bind(&record.from_facility)
+        .bind(&record.to_facility)
+        .bind(record.transfer_date.as_naive().to_string())
+        .bind(&record.reason)
+        .bind(record.authorized_by.as_uuid().to_string())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        // UPDATE facility_status to Transferred
+        sqlx::query("UPDATE detainees SET facility_status = 'Transferred', updated_at = ? WHERE id = ?")
+            .bind(&now_str)
+            .bind(&id_str)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        // Deactivate active warrant
+        sqlx::query("UPDATE commitment_orders SET is_active = 0 WHERE detainee_id = ? AND is_active = 1")
+            .bind(&id_str)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        // Add note if reason provided
+        if !record.reason.is_empty() {
+            let note_content = format!("Transfer: {}", record.reason);
+            sqlx::query(
+                "INSERT INTO notes (detainee_id, content, author, timestamp, note_type) VALUES (?, ?, ?, ?, 'general')"
+            )
+            .bind(&id_str)
+            .bind(&note_content)
+            .bind(record.authorized_by.as_uuid().to_string())
+            .bind(&now_str)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+        }
+
+        // Audit
+        let before = serde_json::to_value(&current.facility_status).ok();
+        let after = serde_json::to_value(&record).ok();
+        let _ = audit::create_audit_entry(
+            &self.pool, record.authorized_by, ModuleName::Registry,
+            "transfer", Some(record.detainee_id), before, after,
+        ).await;
+
+        self.load_detainee(record.detainee_id).await
     }
 
     async fn release(&self, record: ReleaseRecord) -> Result<Detainee, RegistryError> {
@@ -843,7 +1742,7 @@ impl Registry for SqliteRegistry {
         // Add release note
         if let Some(note) = &record.notes {
             sqlx::query(
-                "INSERT INTO notes (detainee_id, content, author, timestamp) VALUES (?, ?, ?, ?)"
+                "INSERT INTO notes (detainee_id, content, author, timestamp, note_type) VALUES (?, ?, ?, ?, 'general')"
             )
             .bind(&id_str)
             .bind(note)
@@ -1050,59 +1949,64 @@ impl Registry for SqliteRegistry {
             .fetch_one(&self.pool)
             .await
             .map_err(|e| RegistryError::Database(e.to_string()))?;
+        let total_matching = total.0 as u32;
 
-        // Get rows
+        // Get page rows
         let select_sql = qb.select_query();
         let rows: Vec<DetaineeRow> = sqlx::query_as(&select_sql)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| RegistryError::Database(e.to_string()))?;
 
-        // Convert to summaries
+        // Load housing units for flag computation
+        let housing_units = self.housing_units().await?;
+
+        // Convert to summaries with flags
         let today = Utc::now().date_naive();
         let mut summaries = Vec::new();
-        for row in rows {
+        for row in &rows {
             let id = DetaineeId::from_uuid(parse_uuid(&row.id)?);
             let intake = parse_date(&row.intake_date)?;
             let days_held = (today - intake).num_days().max(0) as u32;
 
-            let basis_label: DetentionBasisLabel = match row.detention_basis_label.as_str() {
-                "NoLegalBasis" => DetentionBasisLabel::NoLegalBasis,
-                "PoliceCustody" => DetentionBasisLabel::PoliceCustody,
-                "Remand" => DetentionBasisLabel::Remand,
-                "OnTrial" => DetentionBasisLabel::OnTrial,
-                "ConvictedUnsentenced" => DetentionBasisLabel::ConvictedUnsentenced,
-                "Sentenced" => DetentionBasisLabel::Sentenced,
-                "Appeal" => DetentionBasisLabel::Appeal,
-                _ => DetentionBasisLabel::NoLegalBasis,
-            };
+            let basis_label = parse_basis_label(&row.detention_basis_label);
+
+            // Load full detainee to compute flags (Option A — simple, OK at Pi scale)
+            let detainee = self.load_detainee(id).await?;
+            let flags = crate::flags::compute_flags(&detainee, &self.config, &housing_units);
 
             summaries.push(DetaineeSummary {
                 id,
                 name: format!("{}, {}", row.surname, row.given_names),
                 sex: parse_sex(&row.sex),
-                age: None, // Would need DOB calculation
+                age: None,
                 detention_basis: basis_label,
                 intake_date: PastDate::from_trusted(intake),
                 days_held,
                 bail_status: None,
                 next_court_date: None,
                 release_date: None,
-                housing_unit: row.housing_unit_id,
+                housing_unit: row.housing_unit_id.clone(),
                 has_legal_representation: row.legal_representation.is_some(),
-                flags: Vec::new(), // Flags computed separately if needed
+                flags,
             });
         }
 
+        // Compute statistics over the full matching set
+        let statistics = self
+            .compute_search_statistics(&qb.where_clause(), total_matching, &housing_units)
+            .await?;
+
         Ok(PopulationQueryResult {
             detainees: summaries,
-            total_matching: total.0 as u32,
-            statistics: default_statistics(),
+            total_matching,
+            statistics,
         })
     }
 
     async fn overview(&self) -> Result<FacilityOverview, RegistryError> {
         let today = Utc::now();
+        let today_naive = today.date_naive();
 
         // Total population (active detainees)
         let total: (i64,) = sqlx::query_as(
@@ -1130,6 +2034,184 @@ impl Registry for SqliteRegistry {
             SystemStatus::ClockUnsynchronized { system_time: today }
         };
 
+        // --- SexBreakdown ---
+        let sex_rows: Vec<(String, i64)> = sqlx::query_as(
+            "SELECT sex, COUNT(*) FROM detainees \
+             WHERE facility_status IN ('Present', 'InCourt', 'InHospital') \
+             GROUP BY sex"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let mut sex_breakdown = SexBreakdown::default();
+        for (sex, count) in &sex_rows {
+            match sex.as_str() {
+                "Male" => sex_breakdown.male = *count as u32,
+                "Female" => sex_breakdown.female = *count as u32,
+                _ => sex_breakdown.other = *count as u32,
+            }
+        }
+
+        // --- TimeDistribution ---
+        let intake_rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT intake_date FROM detainees \
+             WHERE facility_status IN ('Present', 'InCourt', 'InHospital')"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let mut days_list: Vec<u32> = Vec::with_capacity(intake_rows.len());
+        let mut time_dist = TimeDistribution::default();
+        let mut total_days: u64 = 0;
+
+        for (intake_str,) in &intake_rows {
+            if let Ok(intake) = NaiveDate::parse_from_str(intake_str, "%Y-%m-%d") {
+                let days = (today_naive - intake).num_days().max(0) as u32;
+                days_list.push(days);
+                total_days += days as u64;
+
+                // Exclusive buckets
+                if days < 2 {
+                    time_dist.under_48_hours += 1;
+                } else if days < 7 {
+                    time_dist.under_1_week += 1;
+                } else if days < 30 {
+                    time_dist.under_1_month += 1;
+                } else if days < 90 {
+                    time_dist.under_3_months += 1;
+                } else if days < 180 {
+                    time_dist.under_6_months += 1;
+                } else if days < 365 {
+                    time_dist.under_1_year += 1;
+                } else if days < 730 {
+                    time_dist.under_2_years += 1;
+                } else {
+                    time_dist.over_2_years += 1;
+                }
+            }
+        }
+
+        if !days_list.is_empty() {
+            time_dist.mean_days = total_days as f64 / days_list.len() as f64;
+            days_list.sort_unstable();
+            let mid = days_list.len() / 2;
+            time_dist.median_days = if days_list.len() % 2 == 0 {
+                (days_list[mid - 1] + days_list[mid]) / 2
+            } else {
+                days_list[mid]
+            };
+        }
+
+        // --- FlagCounts + CriticalNumbers ---
+        // Load all active detainees and housing units for flag computation
+        let active_rows: Vec<DetaineeRow> = sqlx::query_as(
+            "SELECT id, surname, given_names, preferred_name, sex, date_of_birth, \
+             nationality, national_id, detention_basis_label, detention_basis_data, \
+             facility_status, intake_date, housing_unit_id, identity_extra, \
+             legal_reference, legal_representation, emergency_contacts \
+             FROM detainees WHERE facility_status IN ('Present', 'InCourt', 'InHospital')"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let housing_units = self.housing_units().await?;
+
+        let mut all_flags: Vec<Vec<Flag>> = Vec::with_capacity(active_rows.len());
+        for row in active_rows {
+            let det_id_str = row.id.clone();
+
+            let warrant_rows: Vec<WarrantRow> = sqlx::query_as(
+                "SELECT id, detainee_id, order_type, order_data, external_reference, \
+                 issuing_authority, issuing_officer, date_issued, date_received, valid_until, \
+                 offence_description, sentence_details, is_active, registered_by, batch_id, \
+                 document_hash \
+                 FROM commitment_orders WHERE detainee_id = ? ORDER BY created_at"
+            )
+            .bind(&det_id_str)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+            let alias_rows: Vec<(String,)> = sqlx::query_as(
+                "SELECT alias FROM detainee_aliases WHERE detainee_id = ?"
+            )
+            .bind(&det_id_str)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+            match row_to_detainee(row, warrant_rows, Vec::new(), Vec::new(), alias_rows) {
+                Ok(detainee) => {
+                    let flags = crate::flags::compute_flags(&detainee, &self.config, &housing_units);
+                    all_flags.push(flags);
+                }
+                Err(_) => continue,
+            }
+        }
+
+        let flag_counts = crate::flags::compute_flag_counts(&all_flags);
+
+        // Build CriticalNumbers from the same flag data
+        let mut critical = CriticalNumbers::default();
+        for flags in &all_flags {
+            for flag in flags {
+                match flag {
+                    Flag::NoLegalBasis { .. } => critical.no_legal_basis += 1,
+                    Flag::CustodyLimitExceeded { .. } => critical.custody_limit_breaches += 1,
+                    Flag::NoCourtDate { .. } => critical.no_court_date += 1,
+                    Flag::ProlongedPreTrial { days_held, .. } if *days_held > 365 => {
+                        critical.pretrial_over_1_year += 1;
+                    }
+                    Flag::BailGrantedStillHeld { .. } => critical.bail_granted_still_held += 1,
+                    Flag::ReleaseDatePassed { .. } => critical.release_overdue += 1,
+                    Flag::WarrantExpired { .. } => critical.warrant_expired += 1,
+                    Flag::CourtDateImminent { .. } => critical.court_dates_48h += 1,
+                    Flag::ReleaseImminent { .. } => critical.releases_7_days += 1,
+                    _ => {}
+                }
+            }
+        }
+
+        // --- DailyCountStatus ---
+        let today_str = today_naive.format("%Y-%m-%d").to_string();
+        let dc_row: Option<DailyCountRow> = sqlx::query_as(
+            "SELECT id, date, opening_count, admissions, transfers_in, court_returns, hospital_returns, \
+             releases, transfers_out, to_court, to_hospital, escapes, deaths, computed_closing, \
+             actual_closing_count, is_balanced, discrepancy_note, counted_by, finalized_by, finalized_at \
+             FROM daily_counts WHERE date = ?"
+        )
+        .bind(&today_str)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let today_count_status = match dc_row {
+            None => DailyCountStatus::NotStarted,
+            Some(row) => {
+                if row.finalized_by.is_some() {
+                    // Finalized
+                    let closing = row.actual_closing_count.unwrap_or(row.computed_closing) as u32;
+                    let balanced = row.is_balanced.map(|v| v != 0).unwrap_or(false);
+                    DailyCountStatus::Finalized { closing, balanced }
+                } else if row.actual_closing_count.is_some() {
+                    // Submitted but not finalized
+                    DailyCountStatus::Submitted {
+                        computed: row.computed_closing as u32,
+                        actual: row.actual_closing_count.unwrap() as u32,
+                        balanced: row.is_balanced.map(|v| v != 0).unwrap_or(false),
+                    }
+                } else {
+                    // Open
+                    DailyCountStatus::Open {
+                        computed_closing: row.computed_closing as u32,
+                    }
+                }
+            }
+        };
+
         Ok(FacilityOverview {
             as_of: today,
             system_status,
@@ -1142,11 +2224,11 @@ impl Registry for SqliteRegistry {
             },
             basis_breakdown: basis,
             pretrial_percent: pretrial_pct,
-            time_distribution: TimeDistribution::default(),
-            flag_counts: FlagCounts::default(),
-            sex_breakdown: SexBreakdown::default(),
-            today_count_status: DailyCountStatus::NotStarted,
-            critical: CriticalNumbers::default(),
+            time_distribution: time_dist,
+            flag_counts,
+            sex_breakdown,
+            today_count_status,
+            critical,
         })
     }
 }
@@ -1291,6 +2373,167 @@ impl SqliteRegistry {
                 .map(|dt| dt.with_timezone(&Utc)),
         })
     }
+
+    /// Compute aggregate statistics for a search result set.
+    async fn compute_search_statistics(
+        &self,
+        where_clause: &str,
+        total_matching: u32,
+        housing_units: &[HousingUnit],
+    ) -> Result<QueryStatistics, RegistryError> {
+        let today_naive = Utc::now().date_naive();
+
+        let sql = format!(
+            "SELECT id, surname, given_names, preferred_name, sex, date_of_birth, \
+             nationality, national_id, detention_basis_label, detention_basis_data, \
+             facility_status, intake_date, housing_unit_id, identity_extra, \
+             legal_reference, legal_representation, emergency_contacts \
+             FROM detainees {}",
+            where_clause
+        );
+        let rows: Vec<DetaineeRow> = sqlx::query_as(&sql)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+        let mut basis = BasisBreakdown::default();
+        let mut sex = SexBreakdown::default();
+        let mut time_dist = TimeDistribution::default();
+        let mut days_list: Vec<u32> = Vec::with_capacity(rows.len());
+        let mut total_days: u64 = 0;
+        let mut with_court = 0u32;
+        let mut without_court = 0u32;
+        let mut with_legal = 0u32;
+        let mut without_legal = 0u32;
+        let mut bail_granted = 0u32;
+        let mut bail_not_applied = 0u32;
+        let mut all_flags: Vec<Vec<Flag>> = Vec::with_capacity(rows.len());
+
+        for row in rows {
+            match row.detention_basis_label.as_str() {
+                "NoLegalBasis" => basis.no_legal_basis += 1,
+                "PoliceCustody" => basis.police_custody += 1,
+                "Remand" => basis.remand += 1,
+                "OnTrial" => basis.on_trial += 1,
+                "ConvictedUnsentenced" => basis.convicted_unsentenced += 1,
+                "Sentenced" => basis.sentenced += 1,
+                "Appeal" => basis.appeal += 1,
+                _ => {}
+            }
+
+            match row.sex.as_str() {
+                "Male" => sex.male += 1,
+                "Female" => sex.female += 1,
+                _ => sex.other += 1,
+            }
+
+            if let Ok(intake) = NaiveDate::parse_from_str(&row.intake_date, "%Y-%m-%d") {
+                let days = (today_naive - intake).num_days().max(0) as u32;
+                days_list.push(days);
+                total_days += days as u64;
+
+                if days < 2 {
+                    time_dist.under_48_hours += 1;
+                } else if days < 7 {
+                    time_dist.under_1_week += 1;
+                } else if days < 30 {
+                    time_dist.under_1_month += 1;
+                } else if days < 90 {
+                    time_dist.under_3_months += 1;
+                } else if days < 180 {
+                    time_dist.under_6_months += 1;
+                } else if days < 365 {
+                    time_dist.under_1_year += 1;
+                } else if days < 730 {
+                    time_dist.under_2_years += 1;
+                } else {
+                    time_dist.over_2_years += 1;
+                }
+            }
+
+            if row.legal_representation.is_some() {
+                with_legal += 1;
+            } else {
+                without_legal += 1;
+            }
+
+            if let Ok(det_basis) = serde_json::from_str::<DetentionBasis>(&row.detention_basis_data) {
+                if det_basis.next_court_date().is_some() {
+                    with_court += 1;
+                } else {
+                    without_court += 1;
+                }
+                if let Some(bail) = det_basis.bail_status() {
+                    match bail {
+                        BailStatus::Granted { .. } => bail_granted += 1,
+                        BailStatus::NotApplied => bail_not_applied += 1,
+                        _ => {}
+                    }
+                }
+            } else {
+                without_court += 1;
+            }
+
+            let det_id_str = row.id.clone();
+            let warrant_rows: Vec<WarrantRow> = sqlx::query_as(
+                "SELECT id, detainee_id, order_type, order_data, external_reference, \
+                 issuing_authority, issuing_officer, date_issued, date_received, valid_until, \
+                 offence_description, sentence_details, is_active, registered_by, batch_id, \
+                 document_hash \
+                 FROM commitment_orders WHERE detainee_id = ? ORDER BY created_at"
+            )
+            .bind(&det_id_str)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+            let alias_rows: Vec<(String,)> = sqlx::query_as(
+                "SELECT alias FROM detainee_aliases WHERE detainee_id = ?"
+            )
+            .bind(&det_id_str)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| RegistryError::Database(e.to_string()))?;
+
+            if let Ok(detainee) = row_to_detainee(row, warrant_rows, Vec::new(), Vec::new(), alias_rows) {
+                let flags = crate::flags::compute_flags(&detainee, &self.config, housing_units);
+                all_flags.push(flags);
+            }
+        }
+
+        if !days_list.is_empty() {
+            time_dist.mean_days = total_days as f64 / days_list.len() as f64;
+            days_list.sort_unstable();
+            let mid = days_list.len() / 2;
+            time_dist.median_days = if days_list.len() % 2 == 0 {
+                (days_list[mid - 1] + days_list[mid]) / 2
+            } else {
+                days_list[mid]
+            };
+        }
+
+        let flag_counts = crate::flags::compute_flag_counts(&all_flags);
+
+        Ok(QueryStatistics {
+            total: total_matching,
+            by_detention_basis: basis,
+            time_held: time_dist,
+            flag_counts,
+            with_court_date: with_court,
+            without_court_date: without_court,
+            with_legal_representation: with_legal,
+            without_legal_representation: without_legal,
+            bail_granted_still_held: bail_granted,
+            bail_not_applied,
+            by_sex: sex,
+            facility_capacity: self.config.capacity,
+            occupancy_rate: if self.config.capacity > 0 {
+                total_matching as f64 / self.config.capacity as f64 * 100.0
+            } else {
+                0.0
+            },
+        })
+    }
 }
 
 async fn load_basis_breakdown(pool: &SqlitePool) -> Result<BasisBreakdown, RegistryError> {
@@ -1320,20 +2563,3 @@ async fn load_basis_breakdown(pool: &SqlitePool) -> Result<BasisBreakdown, Regis
     Ok(breakdown)
 }
 
-fn default_statistics() -> QueryStatistics {
-    QueryStatistics {
-        total: 0,
-        by_detention_basis: BasisBreakdown::default(),
-        time_held: TimeDistribution::default(),
-        flag_counts: FlagCounts::default(),
-        with_court_date: 0,
-        without_court_date: 0,
-        with_legal_representation: 0,
-        without_legal_representation: 0,
-        bail_granted_still_held: 0,
-        bail_not_applied: 0,
-        by_sex: SexBreakdown::default(),
-        facility_capacity: 0,
-        occupancy_rate: 0.0,
-    }
-}

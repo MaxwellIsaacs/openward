@@ -2,9 +2,10 @@ use chrono::Utc;
 use openward_core::{
     BailStatus, Detainee, DetentionBasis, FacilityStatus, Flag, FlagCounts, HousingUnit,
 };
+use serde::{Deserialize, Serialize};
 
 /// Jurisdiction-specific configuration thresholds for flag computation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FacilityConfig {
     pub capacity: u32,
     /// Maximum hours police can hold someone before first court appearance (default: 48).
