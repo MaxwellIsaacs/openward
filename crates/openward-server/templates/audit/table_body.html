@@ -1,0 +1,59 @@
+<table>
+  <thead>
+    <tr>
+      <th>{{ t.get("audit-col-timestamp") }}</th>
+      <th>{{ t.get("audit-col-operator") }}</th>
+      <th>{{ t.get("audit-col-module") }}</th>
+      <th>{{ t.get("audit-col-action") }}</th>
+      <th>{{ t.get("audit-col-target") }}</th>
+      <th>{{ t.get("audit-col-details") }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in entries %}
+    <tr>
+      <td><small><a href="/audit/{{ entry.id }}">{{ entry.timestamp }}</a></small></td>
+      <td>{{ entry.operator_name }}</td>
+      <td>{{ entry.module }}</td>
+      <td>{{ entry.action }}</td>
+      <td>
+        {% if let Some(name) = entry.target_name %}
+          {% if let Some(tid) = entry.target_id %}
+            <a href="/detainees/{{ tid }}/view">{{ name }}</a>
+          {% else %}
+            {{ name }}
+          {% endif %}
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+      <td><small>{{ entry.details }}</small></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if entries.is_empty() %}
+<p><em>{{ t.get("audit-no-entries") }}</em></p>
+{% endif %}
+
+<div class="pagination">
+  <small>{{ t.get_u32("audit-total", "count", total_count) }}</small>
+  {% if page > 1 %}
+  <a href="#"
+     hx-get="/audit/search?page={{ page - 1 }}"
+     hx-target="#audit-results"
+     hx-include="#audit-filter-form">
+    {{ t.get("population-previous") }}
+  </a>
+  {% endif %}
+  <span>{{ t.get_2u32("population-page", "current", page, "total", total_pages) }}</span>
+  {% if page < total_pages %}
+  <a href="#"
+     hx-get="/audit/search?page={{ page + 1 }}"
+     hx-target="#audit-results"
+     hx-include="#audit-filter-form">
+    {{ t.get("population-next") }}
+  </a>
+  {% endif %}
+</div>

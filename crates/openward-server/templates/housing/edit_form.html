@@ -1,0 +1,65 @@
+<article>
+  <header>{{ t.get_1("housing-edit-title", "name", &unit.name) }}</header>
+  <form hx-put="/housing/{{ unit.id }}"
+        hx-target="body">
+
+    <label>
+      {{ t.get("housing-unit-name") }}
+      <input type="text" name="name" required value="{{ unit.name }}">
+    </label>
+
+    <div class="detail-grid">
+      <div>
+        <label>
+          {{ t.get("housing-unit-capacity") }}
+          <input type="number" name="capacity" required min="1" value="{{ unit.capacity }}">
+        </label>
+      </div>
+      <div>
+        <label>
+          {{ t.get("housing-unit-type") }}
+          <select name="unit_type" required>
+            <option value="General" {% if unit.unit_type_code == "General" %}selected{% endif %}>{{ t.get("housing-type-general") }}</option>
+            <option value="PreTrial" {% if unit.unit_type_code == "PreTrial" %}selected{% endif %}>{{ t.get("housing-type-pretrial") }}</option>
+            <option value="Medical" {% if unit.unit_type_code == "Medical" %}selected{% endif %}>{{ t.get("housing-type-medical") }}</option>
+            <option value="Isolation" {% if unit.unit_type_code == "Isolation" %}selected{% endif %}>{{ t.get("housing-type-isolation") }}</option>
+            <option value="Protective" {% if unit.unit_type_code == "Protective" %}selected{% endif %}>{{ t.get("housing-type-protective") }}</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div>
+        <label>
+          {{ t.get("housing-unit-sex") }}
+          <select name="designated_sex">
+            <option value="">{{ t.get("housing-unit-sex-none") }}</option>
+            <option value="Male" {% if unit.designated_sex_code.as_deref() == Some("Male") %}selected{% endif %}>{{ t.get("sex-male") }}</option>
+            <option value="Female" {% if unit.designated_sex_code.as_deref() == Some("Female") %}selected{% endif %}>{{ t.get("sex-female") }}</option>
+          </select>
+        </label>
+      </div>
+      <div>
+        <label>
+          {{ t.get("housing-unit-age-group") }}
+          <select name="designated_age_group">
+            <option value="">{{ t.get("housing-unit-sex-none") }}</option>
+            <option value="Adult" {% if unit.designated_age_group_code.as_deref() == Some("Adult") %}selected{% endif %}>{{ t.get("age-adult") }}</option>
+            <option value="Juvenile" {% if unit.designated_age_group_code.as_deref() == Some("Juvenile") %}selected{% endif %}>{{ t.get("age-juvenile") }}</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit">{{ t.get("form-save") }}</button>
+      <button type="button"
+              hx-get="/housing"
+              hx-target="body"
+              class="secondary">
+        {{ t.get("form-cancel") }}
+      </button>
+    </div>
+  </form>
+</article>

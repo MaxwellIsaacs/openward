@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}OpenWard - {{ t.get("operators-new-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("operators-new-title") }}</h1>
+</hgroup>
+
+{% if let Some(msg) = error %}
+<article class="flash-error">
+  <p>{{ msg }}</p>
+</article>
+{% endif %}
+
+<form method="post" action="/operators">
+  <label>
+    {{ t.get("operators-username") }}
+    <input type="text" name="username" required>
+  </label>
+
+  <label>
+    {{ t.get("operators-display-name") }}
+    <input type="text" name="display_name" required>
+  </label>
+
+  <label>
+    {{ t.get("operators-password") }}
+    <input type="password" name="password" required>
+  </label>
+
+  <label>
+    {{ t.get("operators-confirm-password") }}
+    <input type="password" name="confirm_password" required>
+  </label>
+
+  <label>
+    {{ t.get("operators-role") }}
+    <select name="role" required>
+      <option value="operator">{{ t.get("role-operator") }}</option>
+      <option value="supervisor">{{ t.get("role-supervisor") }}</option>
+      <option value="admin">{{ t.get("role-admin") }}</option>
+      <option value="readonly">{{ t.get("role-readonly") }}</option>
+    </select>
+  </label>
+
+  <label>
+    {{ t.get("operators-language") }}
+    <select name="language">
+      {% for (code, label) in languages %}
+      <option value="{{ code }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <div class="actions">
+    <button type="submit">{{ t.get("operators-create") }}</button>
+    <a href="/operators" role="button" class="secondary">{{ t.get("form-cancel") }}</a>
+  </div>
+</form>
+{% endblock %}

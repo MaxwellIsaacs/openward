@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="{{ t.lang_code() }}" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ t.get("login-title") }}</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+    <main style="margin-top: 15vh;">
+        <article style="max-width: 400px; margin-left: auto; margin-right: auto;">
+            <h1>{{ t.get("login-title") }}</h1>
+
+            {% if let Some(err) = error %}
+            <p class="flash flash-error">{{ err }}</p>
+            {% endif %}
+
+            <form method="post" action="/login">
+                <label for="language">
+                    {{ t.get("login-language") }}
+                    <select name="language" id="language">
+                        {% for (code, name) in languages %}
+                        <option value="{{ code }}" {% if *code == t.lang_code() %}selected{% endif %}>
+                            {{ name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label for="username">
+                    {{ t.get("login-username") }}
+                    <input type="text" name="username" id="username" autocomplete="username" required autofocus>
+                </label>
+
+                <label for="password">
+                    {{ t.get("login-password") }}
+                    <input type="password" name="password" id="password" autocomplete="current-password" required>
+                </label>
+
+                <button type="submit">{{ t.get("login-submit") }}</button>
+            </form>
+        </article>
+    </main>
+</body>
+</html>

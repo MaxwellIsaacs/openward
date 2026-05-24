@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get("transfers-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("transfers-title") }}</h1>
+</hgroup>
+
+{% if !transfers.is_empty() %}
+<table>
+  <thead>
+    <tr>
+      <th>{{ t.get("transfers-col-date") }}</th>
+      <th>{{ t.get("transfers-col-detainee") }}</th>
+      <th>{{ t.get("transfers-col-destination") }}</th>
+      <th>{{ t.get("transfers-col-reason") }}</th>
+      <th>{{ t.get("transfers-col-authorized") }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for tr in transfers %}
+    <tr>
+      <td>{{ tr.date }}</td>
+      <td><a href="/detainees/{{ tr.detainee_id }}/view">{{ tr.detainee_name }}</a></td>
+      <td>{{ tr.destination }}</td>
+      <td>{{ tr.reason }}</td>
+      <td>{{ tr.authorized_by }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p><em>{{ t.get("transfers-none") }}</em></p>
+{% endif %}
+{% endblock %}

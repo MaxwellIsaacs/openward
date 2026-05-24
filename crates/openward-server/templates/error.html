@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="{{ t.lang_code() }}" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ t.get_1("error-title", "code", &status.to_string()) }}</title>
+    <link rel="stylesheet" href="/static/pico.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+    {% if let Some(n) = nav %}
+    <header>
+        <nav>
+            <ul>
+                <li><strong>OpenWard</strong></li>
+            </ul>
+            <ul>
+                <li><a href="/" {% if n.current_path == "/" %}aria-current="page"{% endif %}>{{ t.get("nav-dashboard") }}</a></li>
+                <li><a href="/detainees" {% if n.current_path.starts_with("/detainees") %}aria-current="page"{% endif %}>{{ t.get("nav-population") }}</a></li>
+                <li><a href="/admit" {% if n.current_path == "/admit" %}aria-current="page"{% endif %}>{{ t.get("nav-admission") }}</a></li>
+                <li><a href="/daily-count" {% if n.current_path == "/daily-count" %}aria-current="page"{% endif %}>{{ t.get("nav-count") }}</a></li>
+                <li><a href="/court-calendar" {% if n.current_path == "/court-calendar" %}aria-current="page"{% endif %}>{{ t.get("nav-court-calendar") }}</a></li>
+            </ul>
+            <ul>
+                <li>{{ n.operator_name }}</li>
+                <li>
+                    <form method="post" action="/logout" style="display: inline; margin: 0;">
+                        <button type="submit" class="link-button">{{ t.get("nav-logout") }}</button>
+                    </form>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    {% endif %}
+
+    <main>
+        <h1>{{ t.get_1("error-heading", "code", &status.to_string()) }}</h1>
+        <p>{{ message }}</p>
+        <a href="/">{{ t.get("error-back-to-dashboard") }}</a>
+    </main>
+
+    {% if let Some(_) = nav %}
+    <footer>
+        <p>OpenWard v0.1</p>
+    </footer>
+    {% endif %}
+</body>
+</html>

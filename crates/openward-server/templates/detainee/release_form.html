@@ -1,0 +1,54 @@
+<article class="warning">
+  <header>{{ t.get("release-form-title") }}</header>
+  <form hx-post="/detainees/{{ detainee_id }}/do-release"
+        hx-target="#action-target">
+
+    <p><strong>{{ t.get("release-form-warning") }}</strong></p>
+
+    <label>
+      {{ t.get("release-form-type") }}
+      <select name="release_type" required>
+        <option value="">{{ t.get("form-select") }}</option>
+        <option value="SentenceExpired">{{ t.get("legal-release-sentence-expired") }}</option>
+        <option value="Bail">{{ t.get("legal-release-bail") }}</option>
+        <option value="ChargesWithdrawn">{{ t.get("legal-release-charges-withdrawn") }}</option>
+        <option value="Acquitted">{{ t.get("legal-release-acquitted") }}</option>
+        <option value="CourtOrdered">{{ t.get("legal-release-court-ordered") }}</option>
+        <option value="Pardon">{{ t.get("legal-release-pardon") }}</option>
+        <option value="NoLegalBasis">{{ t.get("legal-release-no-legal-basis") }}</option>
+        <option value="Transfer">{{ t.get("legal-release-transfer") }}</option>
+        <option value="Other">{{ t.get("legal-release-other") }}</option>
+      </select>
+    </label>
+
+    <label>
+      {{ t.get("release-form-date") }}
+      <input type="date" name="release_date" required>
+    </label>
+
+    <label>
+      {{ t.get("release-form-authority") }}
+      <input type="text" name="authority">
+    </label>
+
+    <label>
+      {{ t.get("release-form-notes") }}
+      <textarea name="notes" rows="4" required></textarea>
+    </label>
+
+    <label>
+      <input type="checkbox" name="confirm_release" required>
+      {{ t.get("release-form-property-confirm") }}
+    </label>
+
+    <div class="form-actions">
+      <button type="submit" class="contrast">{{ t.get("release-form-submit") }}</button>
+      <button type="button"
+              hx-get="/detainees/{{ detainee_id }}/view"
+              hx-target="body"
+              class="secondary">
+        {{ t.get("form-cancel") }}
+      </button>
+    </div>
+  </form>
+</article>

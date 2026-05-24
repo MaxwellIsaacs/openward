@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}OpenWard - {{ t.get("operators-edit-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("operators-edit-title") }}</h1>
+</hgroup>
+
+{% if let Some(msg) = error %}
+<article class="flash-error">
+  <p>{{ msg }}</p>
+</article>
+{% endif %}
+
+<form method="post" action="/operators/{{ operator.id }}/update">
+  <label>
+    {{ t.get("operators-username") }}
+    <input type="text" value="{{ operator.username }}" disabled>
+  </label>
+
+  <label>
+    {{ t.get("operators-display-name") }}
+    <input type="text" name="display_name" value="{{ operator.display_name }}" required>
+  </label>
+
+  <label>
+    {{ t.get("operators-role") }}
+    <select name="role" required>
+      <option value="operator" {% if operator.role == "operator" %}selected{% endif %}>{{ t.get("role-operator") }}</option>
+      <option value="supervisor" {% if operator.role == "supervisor" %}selected{% endif %}>{{ t.get("role-supervisor") }}</option>
+      <option value="admin" {% if operator.role == "admin" %}selected{% endif %}>{{ t.get("role-admin") }}</option>
+      <option value="readonly" {% if operator.role == "readonly" %}selected{% endif %}>{{ t.get("role-readonly") }}</option>
+    </select>
+  </label>
+
+  <label>
+    {{ t.get("operators-language") }}
+    <select name="language">
+      {% for (code, label) in languages %}
+      <option value="{{ code }}" {% if *code == current_language %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>
+    <input type="checkbox" name="is_active" {% if operator.is_active %}checked{% endif %}>
+    {{ t.get("operators-active") }}
+  </label>
+
+  <div class="actions">
+    <button type="submit">{{ t.get("operators-update") }}</button>
+    <a href="/operators" role="button" class="secondary">{{ t.get("form-cancel") }}</a>
+  </div>
+</form>
+{% endblock %}

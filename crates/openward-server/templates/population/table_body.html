@@ -1,0 +1,63 @@
+<table>
+  <thead>
+    <tr>
+      <th>{{ t.get("population-col-name") }}</th>
+      <th>{{ t.get("population-col-sex") }}</th>
+      <th>{{ t.get("population-col-basis") }}</th>
+      <th>{{ t.get("population-col-intake") }}</th>
+      <th>{{ t.get("population-col-days") }}</th>
+      <th>{{ t.get("population-col-court") }}</th>
+      <th>{{ t.get("population-col-alerts") }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for d in detainees %}
+    <tr>
+      <td>
+        <a href="/detainees/{{ d.id }}/view">
+          <strong>{{ d.name }}</strong>
+        </a>
+      </td>
+      <td>{{ d.sex }}</td>
+      <td>{{ d.detention_basis }}</td>
+      <td>{{ d.intake_date }}</td>
+      <td>{{ d.days_held }}</td>
+      <td>
+        {% if let Some(court_date) = d.next_court_date %}
+          {{ court_date }}
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="flags">
+          {% for flag in d.flags %}
+            <span class="badge">{{ flag }}</span>
+          {% endfor %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="pagination">
+  <small>{{ t.get_u32("population-total", "count", total_matching) }}</small>
+  {% if page > 1 %}
+  <a href="#"
+     hx-get="/detainees/search?page={{ page - 1 }}"
+     hx-target="#results-container"
+     hx-include="#filter-form">
+    {{ t.get("population-previous") }}
+  </a>
+  {% endif %}
+  <span>{{ t.get_2u32("population-page", "current", page, "total", total_pages) }}</span>
+  {% if page < total_pages %}
+  <a href="#"
+     hx-get="/detainees/search?page={{ page + 1 }}"
+     hx-target="#results-container"
+     hx-include="#filter-form">
+    {{ t.get("population-next") }}
+  </a>
+  {% endif %}
+</div>

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}OpenWard - {{ t.get("housing-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("housing-title") }}</h1>
+  <p>{{ t.get_1("housing-units-configured", "count", &units.len().to_string()) }}</p>
+</hgroup>
+
+<div class="actions">
+  <button hx-get="/housing/create-form"
+          hx-target="#housing-action"
+          hx-swap="innerHTML">
+    {{ t.get("housing-add-unit") }}
+  </button>
+</div>
+
+<div id="housing-action"></div>
+
+{% if units.is_empty() %}
+<article>
+  <p>{{ t.get("housing-no-units") }}</p>
+</article>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>{{ t.get("housing-col-name") }}</th>
+      <th>{{ t.get("housing-col-type") }}</th>
+      <th>{{ t.get("housing-col-capacity") }}</th>
+      <th>{{ t.get("housing-col-occupied") }}</th>
+      <th>{{ t.get("housing-col-sex") }}</th>
+      <th>{{ t.get("housing-col-age-group") }}</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for unit in units %}
+    <tr>
+      <td><strong>{{ unit.name }}</strong></td>
+      <td>{{ unit.unit_type }}</td>
+      <td>{{ unit.capacity }}</td>
+      <td>
+        {% if unit.occupancy > unit.capacity %}
+        <span class="flag-critical">{{ unit.occupancy }} / {{ unit.capacity }}</span>
+        {% else %}
+        {{ unit.occupancy }} / {{ unit.capacity }}
+        {% endif %}
+      </td>
+      <td>{{ unit.designated_sex.as_deref().unwrap_or("—") }}</td>
+      <td>{{ unit.designated_age_group.as_deref().unwrap_or("—") }}</td>
+      <td>
+        <div class="actions" style="margin: 0;">
+          <button class="secondary"
+                  hx-get="/housing/{{ unit.id }}/edit-form"
+                  hx-target="#housing-action"
+                  hx-swap="innerHTML"
+                  style="font-size: 0.8em; padding: 0.2em 0.6em;">
+            {{ t.get("housing-edit") }}
+          </button>
+          <button class="secondary"
+                  hx-delete="/housing/{{ unit.id }}"
+                  hx-target="body"
+                  hx-confirm="{{ t.get_1("housing-delete-confirm", "name", &unit.name) }}"
+                  style="font-size: 0.8em; padding: 0.2em 0.6em; --pico-color: #dc3545; --pico-border-color: #dc3545;">
+            {{ t.get("housing-delete") }}
+          </button>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<article>
+  <header>{{ t.get("housing-summary") }}</header>
+  <div class="detail-grid">
+    <dt>{{ t.get("housing-total-capacity") }}</dt>
+    <dd>{{ total_capacity }}</dd>
+    <dt>{{ t.get("housing-total-occupied") }}</dt>
+    <dd>{{ total_occupancy }}</dd>
+  </div>
+</article>
+{% endif %}
+{% endblock %}

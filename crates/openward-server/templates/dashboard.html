@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}OpenWard - {{ t.get("dashboard-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("dashboard-title") }}</h1>
+  <p>{{ as_of }}</p>
+</hgroup>
+
+{% if let Some(warning) = system_warning %}
+<article class="warning">
+  <header>{{ t.get("dashboard-system-warning") }}</header>
+  <p>{{ warning }}</p>
+</article>
+{% endif %}
+
+<div class="stats-grid">
+  <article class="stat-card">
+    <header>{{ t.get("dashboard-current-population") }}</header>
+    <div class="population-gauge">
+      <div class="gauge-text">
+        <strong>{{ total_population }}</strong> / {{ facility_capacity }}
+      </div>
+      <div class="gauge-bar">
+        <div class="gauge-fill" style="width: {{ occupancy_percent }}%"></div>
+      </div>
+      <small>{{ t.get_u32("dashboard-occupancy", "percent", occupancy_percent) }}</small>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <header>{{ t.get("dashboard-pretrial") }}</header>
+    <div class="stat-value">
+      <strong>{{ pretrial_percent }}%</strong>
+    </div>
+    <small>{{ t.get("dashboard-pretrial-of-total") }}</small>
+  </article>
+
+  <article class="stat-card">
+    <header>{{ t.get("dashboard-daily-count") }}</header>
+    <div class="stat-value">
+      <span class="badge {{ count_badge_class }}">{{ count_status }}</span>
+      {% if let Some(detail) = count_detail %}
+      <small>{{ detail }}</small>
+      {% endif %}
+    </div>
+  </article>
+</div>
+
+<article>
+  <header>{{ t.get("dashboard-basis-breakdown") }}</header>
+  <div class="basis-breakdown">
+    <div class="breakdown-bar" style="display: flex;">
+      {% for segment in basis_breakdown %}
+      {% if segment.count > 0 %}
+      <a href="{{ segment.link }}" class="segment {{ segment.css_class }}"
+         style="flex: {{ segment.count }}; color: #fff; text-decoration: none;"
+         title="{{ t.get(segment.label_key) }}: {{ segment.count }}">{{ segment.count }}</a>
+      {% endif %}
+      {% endfor %}
+    </div>
+    <div class="breakdown-legend">
+      {% for segment in basis_breakdown %}
+      {% if segment.count > 0 %}
+      <a href="{{ segment.link }}" class="legend-item" style="text-decoration: none; color: inherit;"><span class="color-box {{ segment.css_class }}"></span> {{ t.get(segment.label_key) }}: {{ segment.count }}</a>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</article>
+
+<article>
+  <header>{{ t.get("dashboard-critical-alerts") }}</header>
+  <div class="alerts-grid">
+    {% for alert in alerts %}
+    {% if alert.count > 0 %}
+    <a href="{{ alert.link }}" class="alert-card alert-card-link {{ alert.css_class }}">
+      <span class="badge badge-{{ alert.css_class }}">{{ alert.count }}</span>
+      <span>{{ t.get(alert.label_key) }}</span>
+    </a>
+    {% endif %}
+    {% endfor %}
+  </div>
+</article>
+
+<div class="quick-actions">
+  <a href="/admit" role="button">{{ t.get("dashboard-new-admission") }}</a>
+  <a href="/detainees" role="button" class="secondary">{{ t.get("dashboard-view-population") }}</a>
+  <a href="/daily-count" role="button" class="secondary">{{ t.get("dashboard-daily-count") }}</a>
+  <a href="/court-calendar" role="button" class="secondary">{{ t.get("dashboard-court-calendar") }}</a>
+  <button onclick="window.print()" class="secondary no-print">{{ t.get("action-print") }}</button>
+</div>
+{% endblock %}

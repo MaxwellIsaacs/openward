@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}OpenWard - {{ t.get("backup-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("backup-title") }}</h1>
+</hgroup>
+
+<article>
+  <header>{{ t.get("backup-database") }}</header>
+  <p>
+    {{ t.get("backup-last") }}:
+    {% if let Some(ts) = last_backup %}
+      <strong>{{ ts }}</strong>
+    {% else %}
+      <em>{{ t.get("backup-no-previous") }}</em>
+    {% endif %}
+  </p>
+  <a href="/api/backup" role="button">{{ t.get("backup-download") }}</a>
+</article>
+
+<article>
+  <header>{{ t.get("backup-exports") }}</header>
+
+  <h4>{{ t.get("export-population-csv") }}</h4>
+  <a href="/api/export/population.csv" role="button" class="secondary">{{ t.get("export-population-csv") }}</a>
+
+  <h4>{{ t.get("export-daily-counts-csv") }}</h4>
+  <form method="get" action="/api/export/daily-counts.csv">
+    <div class="grid">
+      <label>
+        {{ t.get("export-from") }}
+        <input type="date" name="from" required value="{{ default_from }}">
+      </label>
+      <label>
+        {{ t.get("export-to") }}
+        <input type="date" name="to" required value="{{ default_to }}">
+      </label>
+    </div>
+    <button type="submit" class="secondary">{{ t.get("export-daily-counts-csv") }}</button>
+  </form>
+
+  <h4>{{ t.get("export-audit-csv") }}</h4>
+  <form method="get" action="/api/export/audit.csv">
+    <div class="grid">
+      <label>
+        {{ t.get("export-from") }}
+        <input type="date" name="from" required value="{{ default_from }}">
+      </label>
+      <label>
+        {{ t.get("export-to") }}
+        <input type="date" name="to" required value="{{ default_to }}">
+      </label>
+    </div>
+    <button type="submit" class="secondary">{{ t.get("export-audit-csv") }}</button>
+  </form>
+</article>
+{% endblock %}

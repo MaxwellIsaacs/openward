@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get("profile-title") }} - OpenWard{% endblock %}
+
+{% block content %}
+<h1>{{ t.get("profile-title") }}</h1>
+
+{% if must_change_password %}
+<div class="flash flash-error" role="alert">
+    <strong>{{ t.get("profile-must-change-password") }}</strong>
+</div>
+{% endif %}
+
+{% if let Some(msg) = flash %}
+<p class="flash flash-success">{{ msg }}</p>
+{% endif %}
+
+{% if let Some(err) = flash_error %}
+<p class="flash flash-error">{{ err }}</p>
+{% endif %}
+
+<section>
+    <h2>{{ t.get("detainee-identity") }}</h2>
+    <dl>
+        <dt>{{ t.get("profile-display-name") }}</dt>
+        <dd>{{ display_name }}</dd>
+        <dt>{{ t.get("profile-role") }}</dt>
+        <dd>{{ role }}</dd>
+    </dl>
+</section>
+
+<section>
+    <h2>{{ t.get("profile-language") }}</h2>
+    <form method="post" action="/profile/language">
+        <label for="language">
+            {{ t.get("profile-language") }}
+            <select name="language" id="language">
+                {% for (code, name) in languages %}
+                <option value="{{ code }}" {% if *code == language %}selected{% endif %}>
+                    {{ name }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit">{{ t.get("form-save") }}</button>
+    </form>
+</section>
+
+<section>
+    <h2>{{ t.get("profile-change-password") }}</h2>
+    <form method="post" action="/profile/password">
+        <label for="current_password">
+            {{ t.get("profile-current-password") }}
+            <input type="password" name="current_password" id="current_password" required autocomplete="current-password">
+        </label>
+        <label for="new_password">
+            {{ t.get("profile-new-password") }}
+            <input type="password" name="new_password" id="new_password" required autocomplete="new-password">
+        </label>
+        <label for="confirm_password">
+            {{ t.get("profile-confirm-password") }}
+            <input type="password" name="confirm_password" id="confirm_password" required autocomplete="new-password">
+        </label>
+        <button type="submit">{{ t.get("profile-change-password") }}</button>
+    </form>
+</section>
+
+<section>
+    <h2>{{ t.get("profile-active-sessions") }}</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>{{ t.get("profile-display-name") }}</th>
+                <th>{{ t.get("profile-role") }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in sessions %}
+            <tr>
+                <td>{{ s.display_name }}</td>
+                <td>{{ s.role }}</td>
+                <td>
+                    {% if s.is_current %}
+                        <em>{{ t.get("profile-session-current") }}</em>
+                    {% else if is_admin %}
+                        <form method="post" action="/admin/sessions/{{ s.id }}/revoke" style="display:inline; margin:0;">
+                            <button type="submit" class="link-button">{{ t.get("profile-revoke") }}</button>
+                        </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

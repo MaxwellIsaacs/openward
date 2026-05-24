@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}OpenWard - {{ t.get("operators-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("operators-title") }}</h1>
+  <p>{{ t.get("operators-subtitle") }}</p>
+</hgroup>
+
+{% if let Some(msg) = flash %}
+<article class="flash-success">
+  <p>{{ msg }}</p>
+</article>
+{% endif %}
+
+<div class="actions">
+  <a href="/operators/new" role="button">{{ t.get("operators-create") }}</a>
+</div>
+
+{% if operators.is_empty() %}
+<article>
+  <p>{{ t.get("operators-none") }}</p>
+</article>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>{{ t.get("operators-col-username") }}</th>
+      <th>{{ t.get("operators-col-name") }}</th>
+      <th>{{ t.get("operators-col-role") }}</th>
+      <th>{{ t.get("operators-col-status") }}</th>
+      <th>{{ t.get("operators-col-last-login") }}</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for op in operators %}
+    <tr>
+      <td><strong>{{ op.username }}</strong></td>
+      <td>{{ op.display_name }}</td>
+      <td>{{ op.role_label }}</td>
+      <td>
+        {% if op.is_active %}
+        <span style="color: var(--pico-ins-color);">{{ t.get("operators-active") }}</span>
+        {% else %}
+        <span style="color: var(--pico-del-color);">{{ t.get("operators-inactive") }}</span>
+        {% endif %}
+      </td>
+      <td>{{ op.last_login.as_deref().unwrap_or("—") }}</td>
+      <td>
+        <div class="actions" style="margin: 0;">
+          <a href="/operators/{{ op.id }}/edit"
+             role="button" class="secondary"
+             style="font-size: 0.8em; padding: 0.2em 0.6em;">
+            {{ t.get("operators-edit") }}
+          </a>
+          <a href="/operators/{{ op.id }}/reset-password"
+             role="button" class="secondary"
+             style="font-size: 0.8em; padding: 0.2em 0.6em;">
+            {{ t.get("operators-reset-password") }}
+          </a>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

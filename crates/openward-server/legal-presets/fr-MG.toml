@@ -1,0 +1,12 @@
+# Madagascar-specific legal terminology
+# These override the generic translations in locales/*/legal.ftl
+# Only include terms that differ from the generic translations.
+# Omitted keys fall through to the compiled .ftl files.
+
+[fr]
+legal-basis-police-custody = "Garde à vue"
+legal-basis-remand = "Mandat de dépôt"
+
+[mg]
+legal-basis-police-custody = "Fisamborana ara-polisy"
+legal-basis-remand = "Baiko fitanana"

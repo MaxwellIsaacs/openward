@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get("audit-verify-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("audit-verify-title") }}</h1>
+  <p>{{ t.get("audit-verify-subtitle") }}</p>
+</hgroup>
+
+<article>
+  <header>
+    {% if result.is_valid %}
+      <mark>{{ t.get("audit-verify-valid") }}</mark>
+    {% else %}
+      <mark class="flag-critical">{{ t.get("audit-verify-invalid") }}</mark>
+    {% endif %}
+  </header>
+
+  <dl>
+    <dt>{{ t.get("audit-verify-total-entries") }}</dt>
+    <dd>{{ result.total_entries }}</dd>
+
+    <dt>{{ t.get("audit-verify-total-epochs") }}</dt>
+    <dd>{{ result.total_epochs }}</dd>
+  </dl>
+
+  {% if !result.breaks.is_empty() %}
+  <h3>{{ t.get("audit-verify-breaks") }}</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>{{ t.get("audit-verify-break-index") }}</th>
+        <th>{{ t.get("audit-verify-break-id") }}</th>
+        <th>{{ t.get("audit-verify-break-epoch") }}</th>
+        <th>{{ t.get("audit-verify-break-type") }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in result.breaks %}
+      <tr>
+        <td>{{ b.entry_index }}</td>
+        <td><small>{{ b.entry_id }}</small></td>
+        <td>{{ b.epoch }}</td>
+        <td>{{ b.break_type }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</article>
+
+<a href="/audit" role="button" class="secondary">{{ t.get("audit-back") }}</a>
+{% endblock %}

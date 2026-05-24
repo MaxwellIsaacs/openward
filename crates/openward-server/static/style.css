@@ -1,0 +1,309 @@
+/* OpenWard custom styles — supplements Pico CSS classless */
+
+/* === Print === */
+@media print {
+  nav, footer, .no-print, [hx-get], [hx-post], button:not(.print-visible) { display: none !important; }
+  body { font-size: 10pt; }
+  table { font-size: 9pt; }
+  .page-break { page-break-before: always; }
+  article { border: none; box-shadow: none; }
+}
+
+/* === Flag severity badges === */
+.flag-critical {
+  background: #dc3545;
+  color: #fff;
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  font-size: 0.8em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.flag-warning {
+  background: #ffc107;
+  color: #000;
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+.flag-info {
+  background: #0d6efd;
+  color: #fff;
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+/* === Population gauge === */
+.gauge {
+  height: 1.5rem;
+  background: var(--pico-secondary-background);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--pico-muted-border-color);
+}
+.gauge-fill {
+  height: 100%;
+  transition: width 0.3s;
+}
+.gauge-safe { background: #198754; }
+.gauge-warning { background: #ffc107; }
+.gauge-critical { background: #dc3545; }
+
+/* === Basis breakdown bar === */
+.basis-bar {
+  display: flex;
+  gap: 1px;
+  height: 2rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.basis-bar > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75em;
+  color: #fff;
+  min-width: 0;
+}
+
+/* === Stats grid === */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+.stat-card {
+  text-align: center;
+}
+.stat-card .stat-value {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+.stat-card .stat-label {
+  font-size: 0.85em;
+  color: var(--pico-muted-color);
+}
+
+/* === Alerts grid === */
+.alerts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.5rem;
+}
+.alerts-grid > div {
+  padding: 0.3rem 0;
+}
+
+/* === Action buttons row === */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.actions button,
+.actions a[role="button"] {
+  font-size: 0.85em;
+  padding: 0.4em 0.8em;
+}
+
+/* === Inline HTMX form === */
+.action-form {
+  border: 1px solid var(--pico-muted-border-color);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+  background: var(--pico-card-background-color);
+}
+
+/* === HTMX indicators === */
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator { display: inline-block; }
+
+/* === Released banner === */
+.released-banner {
+  background: #198754;
+  color: #fff;
+  border: 2px solid #0f5132;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+}
+.released-banner > header {
+  background: transparent;
+  color: #fff;
+  font-size: 1.25em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0;
+  border: none;
+  margin-bottom: 0.25rem;
+}
+.released-banner > p {
+  margin: 0;
+  color: #fff;
+}
+.status-released {
+  color: #0f5132;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.stale-basis {
+  color: var(--pico-muted-color);
+}
+
+/* === Flash messages === */
+.flash {
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+.flash-success {
+  background: #d1e7dd;
+  border: 1px solid #198754;
+  color: #0f5132;
+}
+.flash-error {
+  background: #f8d7da;
+  border: 1px solid #dc3545;
+  color: #842029;
+}
+
+/* === Legend row === */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.8em;
+  margin-top: 0.5rem;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.legend-swatch {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  border-radius: 2px;
+}
+
+/* === Compact table for small screens === */
+@media (max-width: 1024px) {
+  table { font-size: 0.85em; }
+  th, td { padding: 0.3rem 0.5rem; }
+}
+
+/* === Definition lists: bold terms === */
+dl dt {
+  font-weight: 700;
+}
+
+/* === Detail panels === */
+.detail-section {
+  margin-bottom: 1.5rem;
+}
+.detail-section h3 {
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  padding-bottom: 0.3rem;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem 1.5rem;
+}
+.detail-grid dt {
+  font-weight: 600;
+  font-size: 0.85em;
+  color: var(--pico-muted-color);
+  margin: 0;
+}
+.detail-grid dd {
+  margin: 0 0 0.5rem 0;
+}
+
+/* === Quick link buttons === */
+.quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+/* === Filter form inline === */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+.filter-bar label {
+  margin-bottom: 0;
+}
+.filter-bar select,
+.filter-bar input {
+  margin-bottom: 0;
+}
+
+/* === Advanced filters panel === */
+.advanced-filters {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+.advanced-filters summary {
+  cursor: pointer;
+  font-size: 0.9em;
+  color: var(--pico-primary);
+}
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.filter-group label {
+  font-size: 0.85em;
+  margin-bottom: 0.25rem;
+}
+.filter-group select,
+.filter-group input {
+  margin-bottom: 0.5rem;
+}
+
+/* === Alert card links === */
+.alert-card-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  transition: background-color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.alert-card-link:hover {
+  background-color: var(--pico-secondary-hover);
+  text-decoration: none;
+}
+
+/* === Pagination === */
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  font-size: 0.9em;
+}
+.pagination a {
+  cursor: pointer;
+}

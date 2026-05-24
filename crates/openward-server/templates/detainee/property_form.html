@@ -1,0 +1,18 @@
+<article>
+  <header>{{ t.get("property-add") }}</header>
+  <form method="post" action="/detainees/{{ detainee_id }}/add-property">
+    <label for="description">{{ t.get("property-description") }}</label>
+    <input type="text" id="description" name="description" required>
+
+    <label for="quantity">{{ t.get("property-quantity") }}</label>
+    <input type="number" id="quantity" name="quantity" value="1" min="1">
+
+    <div class="actions-row">
+      <button type="submit">{{ t.get("form-save") }}</button>
+      <button type="button" class="secondary"
+              onclick="document.getElementById('action-target').innerHTML=''">
+        {{ t.get("form-cancel") }}
+      </button>
+    </div>
+  </form>
+</article>

@@ -1,0 +1,59 @@
+<article>
+  <header>{{ t.get("outcome-form-title") }}</header>
+  <form hx-post="/court-calendar/{{ court_date.id }}/outcome"
+        hx-target="#outcome-form-{{ court_date.id }}">
+
+    <p>
+      <strong>{{ t.get("outcome-form-date") }}:</strong> {{ court_date.scheduled_date }}<br>
+      <strong>{{ t.get("outcome-form-court") }}:</strong> {{ court_date.court_name }}<br>
+      <strong>{{ t.get("outcome-form-purpose") }}:</strong> {{ court_date.purpose }}
+    </p>
+
+    <label>
+      {{ t.get("outcome-form-outcome") }} *
+      <select name="outcome_type" required>
+        <option value="">{{ t.get("form-select") }}</option>
+        <option value="Adjourned">{{ t.get("legal-outcome-adjourned") }}</option>
+        <option value="BailGranted">{{ t.get("legal-outcome-bail-granted") }}</option>
+        <option value="BailDenied">{{ t.get("legal-outcome-bail-denied") }}</option>
+        <option value="RemandContinued">{{ t.get("legal-outcome-remand-continued") }}</option>
+        <option value="Acquitted">{{ t.get("legal-outcome-acquitted") }}</option>
+        <option value="Sentenced">{{ t.get("legal-outcome-sentenced") }}</option>
+        <option value="ChargesWithdrawn">{{ t.get("legal-outcome-charges-withdrawn") }}</option>
+        <option value="AppealGranted">{{ t.get("legal-outcome-appeal-granted") }}</option>
+        <option value="AppealDenied">{{ t.get("legal-outcome-appeal-denied") }}</option>
+        <option value="Rescheduled">{{ t.get("legal-outcome-rescheduled") }}</option>
+      </select>
+    </label>
+
+    <label>
+      {{ t.get("outcome-form-next-date") }}
+      <input type="date" name="next_date">
+    </label>
+
+    <label>
+      {{ t.get("outcome-form-reason") }}
+      <textarea name="reason" rows="3"></textarea>
+    </label>
+
+    <label>
+      {{ t.get("outcome-form-bail-amount") }}
+      <input type="number" name="amount" min="0">
+    </label>
+
+    <label>
+      {{ t.get("outcome-form-sentence-days") }}
+      <input type="number" name="sentence_days" min="1">
+    </label>
+
+    <div class="form-actions">
+      <button type="submit">{{ t.get("outcome-form-submit") }}</button>
+      <button type="button"
+              hx-get=""
+              hx-target="#outcome-form-{{ court_date.id }}"
+              class="secondary">
+        {{ t.get("form-cancel") }}
+      </button>
+    </div>
+  </form>
+</article>

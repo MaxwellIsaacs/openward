@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get("admission-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("admission-title") }}</h1>
+  <p>{{ t.get("admission-subtitle") }}</p>
+</hgroup>
+
+<form method="post" action="/admit">
+  <article>
+    <header>{{ t.get("admission-identity") }}</header>
+
+    <div class="grid">
+      <label>
+        {{ t.get("admission-surname") }} *
+        <input type="text" name="surname" required>
+      </label>
+
+      <label>
+        {{ t.get("admission-given-names") }} *
+        <input type="text" name="given_names" required>
+      </label>
+    </div>
+
+    <label>
+      {{ t.get("admission-preferred-name") }}
+      <input type="text" name="preferred_name">
+    </label>
+
+    <div class="grid">
+      <label>
+        {{ t.get("admission-sex") }} *
+        <select name="sex" required>
+          <option value="">{{ t.get("form-select") }}</option>
+          <option value="Male">{{ t.get("admission-sex-male") }}</option>
+          <option value="Female">{{ t.get("admission-sex-female") }}</option>
+        </select>
+      </label>
+
+      <label>
+        {{ t.get("admission-dob") }}
+        <input type="date" name="date_of_birth">
+      </label>
+
+      <label>
+        {{ t.get("admission-estimated-age") }}
+        <input type="number" name="estimated_age" min="1" max="150">
+      </label>
+    </div>
+
+    <div class="grid">
+      <label>
+        {{ t.get("admission-nationality") }}
+        <input type="text" name="nationality">
+      </label>
+
+      <label>
+        {{ t.get("admission-national-id") }}
+        <input type="text" name="national_id">
+      </label>
+    </div>
+
+    <label>
+      {{ t.get("admission-languages") }}
+      <input type="text" name="languages" placeholder="{{ t.get("admission-languages-placeholder") }}">
+    </label>
+  </article>
+
+  <article>
+    <header>{{ t.get("admission-legal-basis") }}</header>
+
+    <label>
+      {{ t.get("admission-basis-type") }} *
+      <select name="basis_type"
+              required
+              hx-get="/admit/basis-fields"
+              hx-target="#basis-fields-container"
+              hx-include="this">
+        <option value="">{{ t.get("form-select") }}</option>
+        <option value="PoliceCustody">{{ t.get("legal-basis-police-custody") }}</option>
+        <option value="RemandAwaitingTrial">{{ t.get("legal-basis-remand") }}</option>
+        <option value="OnTrial">{{ t.get("legal-basis-on-trial") }}</option>
+        <option value="ConvictedUnsentenced">{{ t.get("legal-basis-convicted-unsentenced") }}</option>
+        <option value="Sentenced">{{ t.get("legal-basis-sentenced") }}</option>
+        <option value="NoLegalBasis">{{ t.get("legal-basis-no-legal") }}</option>
+      </select>
+    </label>
+
+    <div id="basis-fields-container">
+      <!-- Dynamic fields will be loaded here -->
+    </div>
+  </article>
+
+  <article>
+    <header>{{ t.get("admission-additional-info") }}</header>
+
+    <label>
+      {{ t.get("admission-warrant-authority") }}
+      <input type="text" name="issuing_authority">
+    </label>
+
+    <label>
+      {{ t.get("admission-warrant-reference") }}
+      <input type="text" name="warrant_reference">
+    </label>
+
+    <label>
+      {{ t.get("admission-warrant-date") }}
+      <input type="date" name="warrant_issue_date">
+    </label>
+
+    <label>
+      {{ t.get("admission-notes") }}
+      <textarea name="admission_notes" rows="4"></textarea>
+    </label>
+
+    <label>
+      {{ t.get("admission-medical-notes") }}
+      <textarea name="medical_notes" rows="3"></textarea>
+    </label>
+  </article>
+
+  <article>
+    <header>{{ t.get("admission-emergency-contact") }}</header>
+
+    <label>
+      {{ t.get("admission-contact-name") }}
+      <input type="text" name="emergency_contact_name">
+    </label>
+
+    <div class="grid">
+      <label>
+        {{ t.get("admission-contact-relationship") }}
+        <input type="text" name="emergency_contact_relationship">
+      </label>
+
+      <label>
+        {{ t.get("admission-contact-phone") }}
+        <input type="tel" name="emergency_contact_phone">
+      </label>
+    </div>
+  </article>
+
+  <div class="form-actions">
+    <button type="submit">{{ t.get("admission-submit") }}</button>
+    <a href="/" role="button" class="secondary">{{ t.get("form-cancel") }}</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get("batch-admission-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("batch-admission-title") }}</h1>
+  <p>{{ t.get("batch-admission-subtitle") }}</p>
+</hgroup>
+
+<form method="post" action="/admit/batch">
+  <article>
+    <header>{{ t.get("batch-admission-shared-warrant") }}</header>
+
+    <div class="grid">
+      <label>
+        {{ t.get("admission-warrant-authority") }} *
+        <input type="text" name="warrant_issuing_authority" required>
+      </label>
+
+      <label>
+        {{ t.get("admission-warrant-reference") }}
+        <input type="text" name="warrant_external_reference">
+      </label>
+    </div>
+
+    <div class="grid">
+      <label>
+        {{ t.get("admission-basis-type") }} *
+        <select name="warrant_order_type" required>
+          <option value="">{{ t.get("form-select") }}</option>
+          <option value="PoliceHolding">{{ t.get("legal-order-police-holding") }}</option>
+          <option value="RemandOrder">{{ t.get("legal-order-remand") }}</option>
+          <option value="ConvictionCommitment">{{ t.get("legal-order-conviction") }}</option>
+        </select>
+      </label>
+
+      <label>
+        {{ t.get("admission-warrant-date") }}
+        <input type="date" name="warrant_date">
+      </label>
+    </div>
+  </article>
+
+  <article>
+    <header>{{ t.get("batch-admission-detainees") }}</header>
+
+    <table id="batch-table">
+      <thead>
+        <tr>
+          <th>{{ t.get("admission-surname") }} *</th>
+          <th>{{ t.get("admission-given-names") }} *</th>
+          <th>{{ t.get("admission-sex") }}</th>
+          <th>{{ t.get("admission-legal-basis") }}</th>
+        </tr>
+      </thead>
+      <tbody id="batch-rows">
+        {% for i in 0..5 %}
+        <tr>
+          <td><input type="text" name="surname" placeholder="{{ t.get("admission-surname") }}"></td>
+          <td><input type="text" name="given_names" placeholder="{{ t.get("admission-given-names") }}"></td>
+          <td>
+            <select name="sex">
+              <option value="Male">{{ t.get("admission-sex-male") }}</option>
+              <option value="Female">{{ t.get("admission-sex-female") }}</option>
+            </select>
+          </td>
+          <td>
+            <select name="basis_type">
+              <option value="RemandAwaitingTrial">{{ t.get("legal-basis-remand") }}</option>
+              <option value="PoliceCustody">{{ t.get("legal-basis-police-custody") }}</option>
+              <option value="Sentenced">{{ t.get("legal-basis-sentenced") }}</option>
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <button type="button" class="secondary" onclick="addBatchRow()">
+      {{ t.get("batch-admission-add-row") }}
+    </button>
+  </article>
+
+  <div class="form-actions">
+    <button type="submit">{{ t.get("batch-admission-submit") }}</button>
+    <a href="/" role="button" class="secondary">{{ t.get("form-cancel") }}</a>
+  </div>
+</form>
+
+<script>
+function addBatchRow() {
+  var tbody = document.getElementById('batch-rows');
+  if (tbody.rows.length >= 20) return;
+  var row = tbody.rows[0].cloneNode(true);
+  row.querySelectorAll('input').forEach(function(input) { input.value = ''; });
+  tbody.appendChild(row);
+}
+</script>
+{% endblock %}

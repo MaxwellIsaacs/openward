@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get("audit-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("audit-title") }}</h1>
+  <p>{{ t.get("audit-subtitle") }}</p>
+</hgroup>
+
+<form id="audit-filter-form">
+  <div class="grid">
+    <label>
+      {{ t.get("audit-date-from") }}
+      <input type="date" name="date_from">
+    </label>
+    <label>
+      {{ t.get("audit-date-to") }}
+      <input type="date" name="date_to">
+    </label>
+    <label>
+      {{ t.get("audit-operator") }}
+      <select name="operator">
+        <option value="">{{ t.get("audit-all-operators") }}</option>
+        {% for op in operators %}
+        <option value="{{ op.id }}">{{ op.display_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      {{ t.get("audit-module") }}
+      <select name="module">
+        <option value="">{{ t.get("audit-all-modules") }}</option>
+        <option value="Registry">{{ t.get("audit-module-registry") }}</option>
+        <option value="Medical">{{ t.get("audit-module-medical") }}</option>
+        <option value="Disciplinary">{{ t.get("audit-module-disciplinary") }}</option>
+        <option value="Commissary">{{ t.get("audit-module-commissary") }}</option>
+        <option value="Visitors">{{ t.get("audit-module-visitors") }}</option>
+        <option value="Analytics">{{ t.get("audit-module-analytics") }}</option>
+        <option value="Auth">{{ t.get("audit-module-auth") }}</option>
+        <option value="Config">{{ t.get("audit-module-config") }}</option>
+      </select>
+    </label>
+  </div>
+  <div class="grid">
+    <label>
+      {{ t.get("audit-target") }}
+      <input type="text" name="target" placeholder="{{ t.get("audit-target-placeholder") }}">
+    </label>
+    <div>
+      <button type="button"
+              hx-get="/audit/search"
+              hx-target="#audit-results"
+              hx-include="#audit-filter-form">
+        {{ t.get("audit-search") }}
+      </button>
+    </div>
+  </div>
+</form>
+
+<div style="margin-bottom: 1rem;">
+  <a href="/audit/verify" role="button" class="secondary outline">{{ t.get("audit-verify-link") }}</a>
+</div>
+
+<div id="audit-results">
+  {% include "audit/table_body.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get("population-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("population-title") }}</h1>
+  <p>{{ t.get("population-subtitle") }}</p>
+</hgroup>
+
+<article>
+  <form id="filter-form">
+    <div class="filter-bar">
+      <input type="text"
+             name="name"
+             value="{{ filters.name }}"
+             placeholder="{{ t.get("population-search-placeholder") }}"
+             hx-get="/detainees/search"
+             hx-target="#results-container"
+             hx-trigger="keyup changed delay:300ms"
+             hx-include="#filter-form">
+
+      <select name="basis"
+              hx-get="/detainees/search"
+              hx-target="#results-container"
+              hx-trigger="change"
+              hx-include="#filter-form">
+        <option value="">{{ t.get("population-all-bases") }}</option>
+        <option value="PoliceCustody"{% if filters.basis == "PoliceCustody" %} selected{% endif %}>{{ t.get("legal-basis-police-custody") }}</option>
+        <option value="RemandAwaitingTrial"{% if filters.basis == "RemandAwaitingTrial" %} selected{% endif %}>{{ t.get("legal-basis-remand") }}</option>
+        <option value="OnTrial"{% if filters.basis == "OnTrial" %} selected{% endif %}>{{ t.get("legal-basis-on-trial") }}</option>
+        <option value="ConvictedUnsentenced"{% if filters.basis == "ConvictedUnsentenced" %} selected{% endif %}>{{ t.get("legal-basis-convicted-unsentenced") }}</option>
+        <option value="Sentenced"{% if filters.basis == "Sentenced" %} selected{% endif %}>{{ t.get("legal-basis-sentenced") }}</option>
+        <option value="SentencedOnAppeal"{% if filters.basis == "SentencedOnAppeal" %} selected{% endif %}>{{ t.get("legal-basis-appeal") }}</option>
+        <option value="NoLegalBasis"{% if filters.basis == "NoLegalBasis" %} selected{% endif %}>{{ t.get("legal-basis-no-legal") }}</option>
+        <option value="AnyPreTrial"{% if filters.basis == "AnyPreTrial" %} selected{% endif %}>{{ t.get("population-any-pretrial") }}</option>
+      </select>
+
+      <select name="sort"
+              hx-get="/detainees/search"
+              hx-target="#results-container"
+              hx-trigger="change"
+              hx-include="#filter-form">
+        <option value="name"{% if filters.sort == "name" %} selected{% endif %}>{{ t.get("population-sort-name-asc") }}</option>
+        <option value="intake_date_desc"{% if filters.sort == "intake_date_desc" %} selected{% endif %}>{{ t.get("population-sort-intake-recent") }}</option>
+        <option value="intake_date_asc"{% if filters.sort == "intake_date_asc" %} selected{% endif %}>{{ t.get("population-sort-intake-oldest") }}</option>
+        <option value="days_held_desc"{% if filters.sort == "days_held_desc" %} selected{% endif %}>{{ t.get("population-sort-days-more") }}</option>
+        <option value="days_held_asc"{% if filters.sort == "days_held_asc" %} selected{% endif %}>{{ t.get("population-sort-days-less") }}</option>
+      </select>
+    </div>
+
+    <details class="advanced-filters">
+      <summary>{{ t.get("population-advanced-filters") }}</summary>
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label>{{ t.get("population-bail-status") }}
+            <select name="bail"
+                    hx-get="/detainees/search"
+                    hx-target="#results-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form">
+              <option value="">{{ t.get("population-bail-all") }}</option>
+              <option value="NotApplied"{% if filters.bail == "NotApplied" %} selected{% endif %}>{{ t.get("population-bail-not-applied") }}</option>
+              <option value="Applied"{% if filters.bail == "Applied" %} selected{% endif %}>{{ t.get("population-bail-applied") }}</option>
+              <option value="GrantedStillHeld"{% if filters.bail == "GrantedStillHeld" %} selected{% endif %}>{{ t.get("population-bail-granted") }}</option>
+              <option value="Denied"{% if filters.bail == "Denied" %} selected{% endif %}>{{ t.get("population-bail-denied") }}</option>
+              <option value="Revoked"{% if filters.bail == "Revoked" %} selected{% endif %}>{{ t.get("population-bail-revoked") }}</option>
+            </select>
+          </label>
+
+          <label>{{ t.get("population-severity") }}
+            <select name="severity"
+                    hx-get="/detainees/search"
+                    hx-target="#results-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form">
+              <option value="">{{ t.get("population-severity-all") }}</option>
+              <option value="Minor"{% if filters.severity == "Minor" %} selected{% endif %}>{{ t.get("population-severity-minor") }}</option>
+              <option value="Moderate"{% if filters.severity == "Moderate" %} selected{% endif %}>{{ t.get("population-severity-moderate") }}</option>
+              <option value="Serious"{% if filters.severity == "Serious" %} selected{% endif %}>{{ t.get("population-severity-serious") }}</option>
+            </select>
+          </label>
+
+          <label>{{ t.get("detainee-sex") }}
+            <select name="sex"
+                    hx-get="/detainees/search"
+                    hx-target="#results-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form">
+              <option value="">{{ t.get("population-sex-all") }}</option>
+              <option value="Male"{% if filters.sex == "Male" %} selected{% endif %}>{{ t.get("sex-male") }}</option>
+              <option value="Female"{% if filters.sex == "Female" %} selected{% endif %}>{{ t.get("sex-female") }}</option>
+              <option value="Other"{% if filters.sex == "Other" %} selected{% endif %}>{{ t.get("sex-other") }}</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="filter-group">
+          <label>{{ t.get("population-days-min") }}
+            <input type="number" name="held_min" min="0"
+                   value="{{ filters.held_min }}"
+                   hx-get="/detainees/search"
+                   hx-target="#results-container"
+                   hx-trigger="change"
+                   hx-include="#filter-form">
+          </label>
+
+          <label>{{ t.get("population-days-max") }}
+            <input type="number" name="held_max" min="0"
+                   value="{{ filters.held_max }}"
+                   hx-get="/detainees/search"
+                   hx-target="#results-container"
+                   hx-trigger="change"
+                   hx-include="#filter-form">
+          </label>
+
+          <label>{{ t.get("population-has-court-date") }}
+            <select name="has_court_date"
+                    hx-get="/detainees/search"
+                    hx-target="#results-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form">
+              <option value="">{{ t.get("population-any") }}</option>
+              <option value="yes"{% if filters.has_court_date == "yes" %} selected{% endif %}>{{ t.get("population-yes") }}</option>
+              <option value="no"{% if filters.has_court_date == "no" %} selected{% endif %}>{{ t.get("population-no") }}</option>
+            </select>
+          </label>
+
+          <label>{{ t.get("population-court-overdue") }}
+            <select name="court_overdue"
+                    hx-get="/detainees/search"
+                    hx-target="#results-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form">
+              <option value="">{{ t.get("population-any") }}</option>
+              <option value="yes"{% if filters.court_overdue == "yes" %} selected{% endif %}>{{ t.get("population-yes") }}</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="filter-group">
+          <label>{{ t.get("population-release-overdue") }}
+            <select name="release_overdue"
+                    hx-get="/detainees/search"
+                    hx-target="#results-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form">
+              <option value="">{{ t.get("population-any") }}</option>
+              <option value="yes"{% if filters.release_overdue == "yes" %} selected{% endif %}>{{ t.get("population-yes") }}</option>
+            </select>
+          </label>
+
+          <label>{{ t.get("population-release-within") }}
+            <input type="number" name="release_within" min="1"
+                   value="{{ filters.release_within }}"
+                   hx-get="/detainees/search"
+                   hx-target="#results-container"
+                   hx-trigger="change"
+                   hx-include="#filter-form">
+          </label>
+
+          <label>{{ t.get("population-has-legal-rep") }}
+            <select name="has_legal_rep"
+                    hx-get="/detainees/search"
+                    hx-target="#results-container"
+                    hx-trigger="change"
+                    hx-include="#filter-form">
+              <option value="">{{ t.get("population-any") }}</option>
+              <option value="yes"{% if filters.has_legal_rep == "yes" %} selected{% endif %}>{{ t.get("population-yes") }}</option>
+              <option value="no"{% if filters.has_legal_rep == "no" %} selected{% endif %}>{{ t.get("population-no") }}</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <button type="button" class="secondary" onclick="this.closest('form').reset(); htmx.trigger(this.closest('form').querySelector('[name=name]'), 'change');">
+        {{ t.get("population-clear-filters") }}
+      </button>
+    </details>
+  </form>
+
+  <div id="results-container">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ t.get("population-col-name") }}</th>
+          <th>{{ t.get("population-col-sex") }}</th>
+          <th>{{ t.get("population-col-basis") }}</th>
+          <th>{{ t.get("population-col-intake") }}</th>
+          <th>{{ t.get("population-col-days") }}</th>
+          <th>{{ t.get("population-col-court") }}</th>
+          <th>{{ t.get("population-col-alerts") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in detainees %}
+        <tr>
+          <td>
+            <a href="/detainees/{{ d.id }}/view">
+              <strong>{{ d.name }}</strong>
+            </a>
+          </td>
+          <td>{{ d.sex }}</td>
+          <td>{{ d.detention_basis }}</td>
+          <td>{{ d.intake_date }}</td>
+          <td>{{ d.days_held }}</td>
+          <td>
+            {% if let Some(court_date) = d.next_court_date %}
+              {{ court_date }}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="flags">
+              {% for flag in d.flags %}
+                <span class="badge">{{ flag }}</span>
+              {% endfor %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <small>{{ t.get_u32("population-total", "count", total_matching) }}</small>
+      {% if page > 1 %}
+      <a href="#"
+         hx-get="/detainees/search?page={{ page - 1 }}"
+         hx-target="#results-container"
+         hx-include="#filter-form">
+        {{ t.get("population-previous") }}
+      </a>
+      {% endif %}
+      <span>{{ t.get_2u32("population-page", "current", page, "total", total_pages) }}</span>
+      {% if page < total_pages %}
+      <a href="#"
+         hx-get="/detainees/search?page={{ page + 1 }}"
+         hx-target="#results-container"
+         hx-include="#filter-form">
+        {{ t.get("population-next") }}
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</article>
+{% endblock %}

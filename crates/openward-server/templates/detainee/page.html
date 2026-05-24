@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}{{ detainee.surname }}, {{ detainee.given_names }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ detainee.surname }}, {{ detainee.given_names }}</h1>
+  {% if let Some(preferred) = detainee.preferred_name %}
+  <p>{{ t.get("detainee-preferred-name") }}: {{ preferred }}</p>
+  {% endif %}
+</hgroup>
+
+<div class="no-print" style="margin-bottom: 1rem;">
+  <button onclick="window.print()" class="secondary">{{ t.get("action-print") }}</button>
+</div>
+
+{% if detainee.is_released %}
+<article class="released-banner">
+  <header>{{ t.get("detainee-released-banner-title") }}</header>
+  <p>{{ t.get("detainee-released-banner-body") }}</p>
+</article>
+{% endif %}
+
+{% if !flags.is_empty() %}
+<article class="flags-section">
+  <header>{{ t.get("detainee-active-alerts") }}</header>
+  <div class="flags">
+    {% for flag in flags %}
+      <span class="badge {{ flag.css_class }}">{{ flag.label }}</span>
+    {% endfor %}
+  </div>
+</article>
+{% endif %}
+
+<div class="grid">
+  <article>
+    <header>{{ t.get("detainee-identity") }}</header>
+    <dl>
+      <dt>{{ t.get("detainee-surname") }}</dt>
+      <dd>{{ detainee.surname }}</dd>
+
+      <dt>{{ t.get("detainee-given-names") }}</dt>
+      <dd>{{ detainee.given_names }}</dd>
+
+      {% if let Some(preferred) = detainee.preferred_name %}
+      <dt>{{ t.get("detainee-preferred-name") }}</dt>
+      <dd>{{ preferred }}</dd>
+      {% endif %}
+
+      <dt>{{ t.get("detainee-sex") }}</dt>
+      <dd>{{ detainee.sex }}</dd>
+
+      {% if let Some(dob) = detainee.date_of_birth %}
+      <dt>{{ t.get("detainee-dob") }}</dt>
+      <dd>{{ dob }}</dd>
+      {% else if let Some(age) = detainee.estimated_age %}
+      <dt>{{ t.get("detainee-estimated-age") }}</dt>
+      <dd>{{ t.get_1("detainee-years", "age", &age.to_string()) }}</dd>
+      {% endif %}
+
+      {% if let Some(nationality) = detainee.nationality %}
+      <dt>{{ t.get("detainee-nationality") }}</dt>
+      <dd>{{ nationality }}</dd>
+      {% endif %}
+
+      {% if let Some(national_id) = detainee.national_id %}
+      <dt>{{ t.get("detainee-national-id") }}</dt>
+      <dd>{{ national_id }}</dd>
+      {% endif %}
+
+      {% if !detainee.languages.is_empty() %}
+      <dt>{{ t.get("detainee-languages") }}</dt>
+      <dd>{% for lang in detainee.languages %}{{ lang }}{% if !loop.last %}, {% endif %}{% endfor %}</dd>
+      {% endif %}
+    </dl>
+  </article>
+
+  <article>
+    <header>{{ t.get("detainee-detention-status") }}</header>
+    <dl>
+      <dt>{{ t.get("detainee-legal-basis") }}</dt>
+      {% if detainee.is_released %}
+      <dd><s class="stale-basis">{{ detainee.detention_basis_label }}</s> <small>({{ t.get("detainee-basis-at-release") }})</small></dd>
+      {% else %}
+      <dd>{{ detainee.detention_basis_label }}</dd>
+      {% endif %}
+
+      <dt>{{ t.get("detainee-intake-date") }}</dt>
+      <dd>{{ detainee.intake_date }}</dd>
+
+      <dt>{{ t.get("detainee-facility-status") }}</dt>
+      {% if detainee.is_released %}
+      <dd><strong class="status-released">{{ detainee.facility_status }}</strong></dd>
+      {% else %}
+      <dd>{{ detainee.facility_status }}</dd>
+      {% endif %}
+
+      {% if let Some(housing) = detainee.housing_unit %}
+      <dt>{{ t.get("detainee-housing-unit") }}</dt>
+      <dd>{{ housing }}</dd>
+      {% endif %}
+
+      {% if let Some(legal_rep) = detainee.legal_representative %}
+      <dt>{{ t.get("detainee-legal-rep") }}</dt>
+      <dd>{{ legal_rep.name }} ({{ legal_rep.contact }})</dd>
+      {% else %}
+      <dt>{{ t.get("detainee-legal-rep") }}</dt>
+      <dd><em>{{ t.get("detainee-legal-rep-none") }}</em></dd>
+      {% endif %}
+    </dl>
+  </article>
+</div>
+
+<div id="action-target"></div>
+
+{% if !detainee.is_released %}
+<div class="actions-row">
+  <button hx-get="/detainees/{{ detainee.id }}/basis-form"
+          hx-target="#action-target">
+    {{ t.get("detainee-edit-basis") }}
+  </button>
+  <button hx-get="/detainees/{{ detainee.id }}/housing-form"
+          hx-target="#action-target"
+          class="secondary">
+    {{ t.get("detainee-assign-housing") }}
+  </button>
+  <button hx-get="/detainees/{{ detainee.id }}/court-date-form"
+          hx-target="#action-target"
+          class="secondary">
+    {{ t.get("detainee-schedule-court") }}
+  </button>
+  <button hx-get="/detainees/{{ detainee.id }}/transfer-form"
+          hx-target="#action-target"
+          class="secondary">
+    {{ t.get("detainee-transfer") }}
+  </button>
+  <button hx-get="/detainees/{{ detainee.id }}/release-form"
+          hx-target="#action-target"
+          class="contrast">
+    {{ t.get("detainee-release") }}
+  </button>
+</div>
+{% endif %}
+
+{% if !detainee.warrants.is_empty() %}
+<article>
+  <header>{{ t.get("detainee-warrants") }}</header>
+  {% for warrant in detainee.warrants %}
+  <details>
+    <summary>
+      {{ warrant.issuing_authority }} - {{ warrant.date_issued }}
+    </summary>
+    <dl>
+      <dt>{{ t.get("detainee-warrant-type") }}</dt>
+      <dd>{{ warrant.order_type }}</dd>
+
+      <dt>{{ t.get("detainee-warrant-authority") }}</dt>
+      <dd>{{ warrant.issuing_authority }}</dd>
+
+      <dt>{{ t.get("detainee-warrant-date") }}</dt>
+      <dd>{{ warrant.date_issued }}</dd>
+
+      {% if let Some(expires) = warrant.valid_until %}
+      <dt>{{ t.get("detainee-warrant-valid-until") }}</dt>
+      <dd>{{ expires }}</dd>
+      {% endif %}
+
+      <dt>{{ t.get("detainee-warrant-status") }}</dt>
+      <dd>{% if warrant.is_active %}{{ t.get("detainee-warrant-active") }}{% else %}{{ t.get("detainee-warrant-inactive") }}{% endif %}</dd>
+    </dl>
+  </details>
+  {% endfor %}
+</article>
+{% endif %}
+
+{% if !detainee.court_dates.is_empty() %}
+<article>
+  <header>{{ t.get("detainee-court-dates") }}</header>
+  <table>
+    <thead>
+      <tr>
+        <th>{{ t.get("detainee-court-date") }}</th>
+        <th>{{ t.get("detainee-court-name") }}</th>
+        <th>{{ t.get("detainee-court-purpose") }}</th>
+        <th>{{ t.get("detainee-court-outcome") }}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cd in detainee.court_dates %}
+      <tr>
+        <td>{{ cd.scheduled_date }}</td>
+        <td>{{ cd.court_name }}</td>
+        <td>{{ cd.purpose }}</td>
+        <td>
+          {% if let Some(outcome) = cd.outcome %}
+            {{ outcome }}
+          {% else %}
+            <em>{{ t.get("detainee-court-pending") }}</em>
+          {% endif %}
+        </td>
+        <td>
+          {% if !cd.has_outcome %}
+          <button hx-get="/detainees/{{ detainee.id }}/edit-court-date/{{ cd.id }}"
+                  hx-target="#action-target"
+                  class="outline" style="margin:0; padding:0.1em 0.5em; font-size:0.8em;">
+            {{ t.get("housing-edit") }}
+          </button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% endif %}
+
+<article>
+  <header>
+    {{ t.get("detainee-notes") }}
+    {% if can_add_notes %}
+    <button hx-get="/detainees/{{ detainee.id }}/note-form"
+            hx-target="#action-target"
+            class="outline" style="float:right; margin:0; padding:0.25em 0.75em;">
+      {{ t.get("note-add") }}
+    </button>
+    {% endif %}
+  </header>
+  {% if detainee.notes.is_empty() %}
+  <p><em>{{ t.get("detainee-notes-none") }}</em></p>
+  {% else %}
+  {% for note in detainee.notes %}
+  <div class="note">
+    <small>{{ note.timestamp }} - {{ note.author }}
+      <span class="badge">{{ note.note_type }}</span>
+    </small>
+    {% if can_delete_notes %}
+    <form method="post" action="/detainees/{{ detainee.id }}/delete-note/{{ note.id }}"
+          style="display:inline; float:right;">
+      <button type="submit" class="outline contrast" style="margin:0; padding:0.1em 0.5em; font-size:0.8em;"
+              onclick="return confirm('{{ t.get("note-delete-confirm") }}')">
+        {{ t.get("note-delete") }}
+      </button>
+    </form>
+    {% endif %}
+    <p>{{ note.content }}</p>
+  </div>
+  {% endfor %}
+  {% endif %}
+</article>
+
+{% if !detainee.emergency_contacts.is_empty() %}
+<article>
+  <header>{{ t.get("detainee-emergency-contacts") }}</header>
+  {% for contact in detainee.emergency_contacts %}
+  <dl>
+    <dt>{{ t.get("detainee-contact-name") }}</dt>
+    <dd>{{ contact.name }}</dd>
+
+    <dt>{{ t.get("detainee-contact-relationship") }}</dt>
+    <dd>{{ contact.relationship }}</dd>
+
+    <dt>{{ t.get("detainee-contact-phone") }}</dt>
+    <dd>{{ contact.phone }}</dd>
+  </dl>
+  {% endfor %}
+</article>
+{% endif %}
+
+<article>
+  <header>
+    {{ t.get("detainee-property") }}
+    {% if can_add_notes %}
+    <button hx-get="/detainees/{{ detainee.id }}/property-form"
+            hx-target="#action-target"
+            class="outline" style="float:right; margin:0; padding:0.25em 0.75em;">
+      {{ t.get("property-add") }}
+    </button>
+    {% endif %}
+  </header>
+  {% if detainee.property.is_empty() %}
+  <p><em>{{ t.get("detainee-property-none") }}</em></p>
+  {% else %}
+  <table>
+    <thead>
+      <tr>
+        <th>{{ t.get("detainee-property-description") }}</th>
+        <th>{{ t.get("detainee-property-quantity") }}</th>
+        <th>{{ t.get("detainee-property-status") }}</th>
+        {% if can_add_notes %}<th></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in detainee.property %}
+      <tr>
+        <td>{{ item.description }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.status }}</td>
+        {% if can_add_notes %}
+        <td>
+          {% if !item.returned %}
+          <form method="post" action="/detainees/{{ detainee.id }}/return-property/{{ item.id }}"
+                style="display:inline;">
+            <button type="submit" class="outline" style="margin:0; padding:0.1em 0.5em; font-size:0.8em;">
+              {{ t.get("property-return") }}
+            </button>
+          </form>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</article>
+
+{% if show_audit %}
+<article>
+  <header>{{ t.get("audit-detainee-history") }}</header>
+  {% if audit_entries.is_empty() %}
+  <p><em>{{ t.get("audit-no-entries") }}</em></p>
+  {% else %}
+  <table>
+    <thead>
+      <tr>
+        <th>{{ t.get("audit-col-timestamp") }}</th>
+        <th>{{ t.get("audit-col-operator") }}</th>
+        <th>{{ t.get("audit-col-module") }}</th>
+        <th>{{ t.get("audit-col-action") }}</th>
+        <th>{{ t.get("audit-col-details") }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in audit_entries %}
+      <tr>
+        <td><small><a href="/audit/{{ entry.id }}">{{ entry.timestamp }}</a></small></td>
+        <td>{{ entry.operator_name }}</td>
+        <td>{{ entry.module }}</td>
+        <td>{{ entry.action }}</td>
+        <td><small>{{ entry.details }}</small></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <a href="/audit?target={{ detainee.id }}">{{ t.get("audit-view-full") }}</a>
+</article>
+{% endif %}
+{% endblock %}

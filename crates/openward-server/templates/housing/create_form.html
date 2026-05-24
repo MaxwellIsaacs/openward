@@ -1,0 +1,65 @@
+<article>
+  <header>{{ t.get("housing-create-title") }}</header>
+  <form hx-post="/housing"
+        hx-target="body">
+
+    <label>
+      {{ t.get("housing-unit-name") }}
+      <input type="text" name="name" required placeholder="{{ t.get("housing-unit-name-placeholder") }}">
+    </label>
+
+    <div class="detail-grid">
+      <div>
+        <label>
+          {{ t.get("housing-unit-capacity") }}
+          <input type="number" name="capacity" required min="1" value="20">
+        </label>
+      </div>
+      <div>
+        <label>
+          {{ t.get("housing-unit-type") }}
+          <select name="unit_type" required>
+            <option value="General">{{ t.get("housing-type-general") }}</option>
+            <option value="PreTrial">{{ t.get("housing-type-pretrial") }}</option>
+            <option value="Medical">{{ t.get("housing-type-medical") }}</option>
+            <option value="Isolation">{{ t.get("housing-type-isolation") }}</option>
+            <option value="Protective">{{ t.get("housing-type-protective") }}</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div>
+        <label>
+          {{ t.get("housing-unit-sex") }}
+          <select name="designated_sex">
+            <option value="">{{ t.get("housing-unit-sex-none") }}</option>
+            <option value="Male">{{ t.get("sex-male") }}</option>
+            <option value="Female">{{ t.get("sex-female") }}</option>
+          </select>
+        </label>
+      </div>
+      <div>
+        <label>
+          {{ t.get("housing-unit-age-group") }}
+          <select name="designated_age_group">
+            <option value="">{{ t.get("housing-unit-sex-none") }}</option>
+            <option value="Adult">{{ t.get("age-adult") }}</option>
+            <option value="Juvenile">{{ t.get("age-juvenile") }}</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit">{{ t.get("housing-create") }}</button>
+      <button type="button"
+              hx-get="/housing"
+              hx-target="body"
+              class="secondary">
+        {{ t.get("form-cancel") }}
+      </button>
+    </div>
+  </form>
+</article>

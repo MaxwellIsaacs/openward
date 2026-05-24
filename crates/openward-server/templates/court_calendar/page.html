@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get("court-calendar-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("court-calendar-title") }}</h1>
+  <p>{{ t.get("court-calendar-subtitle") }}</p>
+</hgroup>
+
+<article>
+  <header>{{ t.get("court-calendar-upcoming") }}</header>
+
+  {% if !upcoming.is_empty() %}
+  <table>
+    <thead>
+      <tr>
+        <th>{{ t.get("court-calendar-col-date") }}</th>
+        <th>{{ t.get("court-calendar-col-detainee") }}</th>
+        <th>{{ t.get("court-calendar-col-court") }}</th>
+        <th>{{ t.get("court-calendar-col-purpose") }}</th>
+        <th>{{ t.get("court-calendar-col-action") }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cd in upcoming %}
+      <tr>
+        <td>
+          <strong>{{ cd.scheduled_date }}</strong>
+        </td>
+        <td>
+          <a href="/detainees/{{ cd.detainee_id }}/view">
+            {{ cd.detainee_name }}
+          </a>
+        </td>
+        <td>{{ cd.court_name }}</td>
+        <td>{{ cd.purpose }}</td>
+        <td>
+          <div id="outcome-form-{{ cd.id }}"></div>
+          <button hx-get="/court-calendar/{{ cd.id }}/outcome-form"
+                  hx-target="#outcome-form-{{ cd.id }}"
+                  class="small">
+            {{ t.get("court-calendar-record-outcome") }}
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p><em>{{ t.get("court-calendar-no-upcoming") }}</em></p>
+  {% endif %}
+</article>
+
+<article>
+  <header>{{ t.get("court-calendar-past") }}</header>
+
+  {% if !past.is_empty() %}
+  <table>
+    <thead>
+      <tr>
+        <th>{{ t.get("court-calendar-col-date") }}</th>
+        <th>{{ t.get("court-calendar-col-detainee") }}</th>
+        <th>{{ t.get("court-calendar-col-court") }}</th>
+        <th>{{ t.get("court-calendar-col-purpose") }}</th>
+        <th>{{ t.get("court-calendar-col-outcome") }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cd in past %}
+      <tr>
+        <td>{{ cd.scheduled_date }}</td>
+        <td>
+          <a href="/detainees/{{ cd.detainee_id }}/view">
+            {{ cd.detainee_name }}
+          </a>
+        </td>
+        <td>{{ cd.court_name }}</td>
+        <td>{{ cd.purpose }}</td>
+        <td>
+          {% if cd.has_outcome %}
+            {{ cd.outcome_summary }}
+          {% else %}
+            <em>{{ t.get("court-calendar-not-recorded") }}</em>
+            <div id="outcome-form-{{ cd.id }}"></div>
+            <button hx-get="/court-calendar/{{ cd.id }}/outcome-form"
+                    hx-target="#outcome-form-{{ cd.id }}"
+                    class="small secondary">
+              {{ t.get("court-calendar-record") }}
+            </button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p><em>{{ t.get("court-calendar-no-past") }}</em></p>
+  {% endif %}
+</article>
+{% endblock %}

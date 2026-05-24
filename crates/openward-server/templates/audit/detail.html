@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get("audit-detail-title") }}{% endblock %}
+
+{% block content %}
+<hgroup>
+  <h1>{{ t.get("audit-detail-title") }}</h1>
+  <p>{{ entry.summary }}</p>
+</hgroup>
+
+<article>
+  <header><strong>{{ t.get("audit-detail-overview") }}</strong></header>
+  <dl>
+    <dt>{{ t.get("audit-col-timestamp") }}</dt>
+    <dd>{{ entry.timestamp }}</dd>
+
+    <dt>{{ t.get("audit-col-operator") }}</dt>
+    <dd>
+      {{ entry.operator_name }}
+      <br><small><code>{{ entry.operator_id }}</code></small>
+    </dd>
+
+    <dt>{{ t.get("audit-col-module") }}</dt>
+    <dd>{{ entry.module }}</dd>
+
+    <dt>{{ t.get("audit-col-action") }}</dt>
+    <dd>{{ entry.action_label }} <small>({{ entry.action_raw }})</small></dd>
+
+    <dt>{{ t.get("audit-col-target") }}</dt>
+    <dd>
+      {% if let Some(tid) = entry.target_id %}
+        {% if let Some(name) = entry.target_name %}
+          <a href="/detainees/{{ tid }}/view">{{ name }}</a>
+        {% else %}
+          <a href="/detainees/{{ tid }}/view"><code>{{ tid }}</code></a>
+        {% endif %}
+      {% else %}
+        <span class="text-muted">—</span>
+      {% endif %}
+    </dd>
+
+    <dt>{{ t.get("audit-detail-entry-id") }}</dt>
+    <dd><code>{{ entry.id }}</code></dd>
+
+    <dt>{{ t.get("audit-detail-epoch") }}</dt>
+    <dd>{{ entry.epoch }}</dd>
+  </dl>
+</article>
+
+{% if !entry.after_fields.is_empty() %}
+<article>
+  <header><strong>{{ t.get("audit-detail-after") }}</strong></header>
+  <dl>
+    {% for field in entry.after_fields %}
+    <dt>{{ field.label }}</dt>
+    <dd>{{ field.value }}</dd>
+    {% endfor %}
+  </dl>
+</article>
+{% endif %}
+
+{% if !entry.before_fields.is_empty() %}
+<article>
+  <header><strong>{{ t.get("audit-detail-before") }}</strong></header>
+  <dl>
+    {% for field in entry.before_fields %}
+    <dt>{{ field.label }}</dt>
+    <dd>{{ field.value }}</dd>
+    {% endfor %}
+  </dl>
+</article>
+{% endif %}
+
+<article>
+  <header>
+    <strong>{{ t.get("audit-detail-integrity") }}</strong>
+    {% if entry.chain_verified %}
+    <mark>{{ t.get("audit-detail-integrity-ok") }}</mark>
+    {% else if entry.self_hash_verified %}
+    <mark class="flag-warning">{{ t.get("audit-detail-integrity-chain-broken") }}</mark>
+    {% else %}
+    <mark class="flag-critical">{{ t.get("audit-detail-integrity-tampered") }}</mark>
+    {% endif %}
+  </header>
+  <dl>
+    <dt>{{ t.get("audit-detail-self-hash") }}</dt>
+    <dd><small><code>{{ entry.self_hash_hex }}</code></small></dd>
+
+    <dt>{{ t.get("audit-detail-chain-hash") }}</dt>
+    <dd><small><code>{{ entry.chain_hash_hex }}</code></small></dd>
+  </dl>
+</article>
+
+<a href="/audit" role="button" class="secondary">{{ t.get("audit-back") }}</a>
+{% endblock %}

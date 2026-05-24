@@ -1,0 +1,23 @@
+<article>
+  <header>{{ t.get("note-add") }}</header>
+  <form method="post" action="/detainees/{{ detainee_id }}/add-note">
+    <label for="note_type">{{ t.get("note-type") }}</label>
+    <select id="note_type" name="note_type">
+      <option value="general">{{ t.get("note-type-general") }}</option>
+      <option value="medical">{{ t.get("note-type-medical") }}</option>
+      <option value="legal">{{ t.get("note-type-legal") }}</option>
+      <option value="behavioral">{{ t.get("note-type-behavioral") }}</option>
+    </select>
+
+    <label for="content">{{ t.get("note-content") }}</label>
+    <textarea id="content" name="content" required rows="4"></textarea>
+
+    <div class="actions-row">
+      <button type="submit">{{ t.get("form-save") }}</button>
+      <button type="button" class="secondary"
+              onclick="document.getElementById('action-target').innerHTML=''">
+        {{ t.get("form-cancel") }}
+      </button>
+    </div>
+  </form>
+</article>

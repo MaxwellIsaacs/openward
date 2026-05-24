@@ -1,0 +1,90 @@
+<article>
+  <header>{{ t.get("basis-form-title") }}</header>
+  <form hx-post="/detainees/{{ detainee_id }}/update-basis"
+        hx-target="#action-target">
+
+    <p><strong>{{ t.get("basis-form-current") }}:</strong> {{ current_basis }}</p>
+
+    <label>
+      {{ t.get("basis-form-new") }}
+      <select name="basis_type" required>
+        <option value="">{{ t.get("form-select") }}</option>
+        <option value="PoliceCustody">{{ t.get("legal-basis-police-custody") }}</option>
+        <option value="RemandAwaitingTrial">{{ t.get("legal-basis-remand") }}</option>
+        <option value="OnTrial">{{ t.get("legal-basis-on-trial") }}</option>
+        <option value="ConvictedUnsentenced">{{ t.get("legal-basis-convicted-unsentenced") }}</option>
+        <option value="Sentenced">{{ t.get("legal-basis-sentenced") }}</option>
+        <option value="NoLegalBasis">{{ t.get("legal-basis-no-legal") }}</option>
+      </select>
+    </label>
+
+    <fieldset>
+      <legend>{{ t.get("basis-form-details") }}</legend>
+
+      <label>
+        {{ t.get("basis-form-arrest-date") }}
+        <input type="date" name="arrest_date">
+      </label>
+
+      <label>
+        {{ t.get("basis-form-arrest-authority") }}
+        <input type="text" name="arresting_authority">
+      </label>
+
+      <label>
+        {{ t.get("basis-form-must-appear") }}
+        <input type="date" name="must_appear_by">
+      </label>
+
+      <label>
+        {{ t.get("basis-form-next-court-date") }}
+        <input type="date" name="next_court_date">
+      </label>
+
+      <label>
+        {{ t.get("basis-form-remand-review") }}
+        <input type="date" name="remand_review_due">
+      </label>
+
+      <label>
+        {{ t.get("basis-form-trial-start") }}
+        <input type="date" name="trial_start_date">
+      </label>
+
+      <label>
+        {{ t.get("basis-form-conviction-date") }}
+        <input type="date" name="conviction_date">
+      </label>
+
+      <label>
+        {{ t.get("basis-form-sentencing-date") }}
+        <input type="date" name="sentencing_date">
+      </label>
+
+      <label>
+        {{ t.get("basis-form-sentence-date") }}
+        <input type="date" name="sentence_date">
+      </label>
+
+      <label>
+        {{ t.get("basis-form-sentence-days") }}
+        <input type="number" name="sentence_days">
+      </label>
+
+      <label>
+        {{ t.get("basis-form-circumstances") }}
+        <textarea name="circumstances" rows="3"></textarea>
+      </label>
+    </fieldset>
+
+    <div class="form-actions">
+      <button type="submit">{{ t.get("form-save") }}</button>
+      <button type="button"
+              hx-get="/detainees/{{ detainee_id }}/view"
+              hx-target="body"
+              class="secondary">
+        {{ t.get("form-cancel") }}
+      </button>
+    </div>
+  </form>
+</article>

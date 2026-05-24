@@ -1,0 +1,40 @@
+<article>
+  <header>{{ t.get("housing-form-title") }}</header>
+  <form hx-post="/detainees/{{ detainee_id }}/update-housing"
+        hx-target="#action-target">
+
+    {% if let Some(current) = current_unit %}
+    <p><strong>{{ t.get("housing-form-current") }}:</strong> {{ current }}</p>
+    {% else %}
+    <p><strong>{{ t.get("housing-form-current") }}:</strong> <em>{{ t.get("housing-form-unassigned") }}</em></p>
+    {% endif %}
+
+    <label>
+      {{ t.get("housing-form-new") }}
+      <select name="unit_id" required>
+        <option value="">{{ t.get("form-select") }}</option>
+        {% for unit in housing_units %}
+        <option value="{{ unit.id }}">
+          {{ unit.name }} ({{ unit.capacity }} {{ t.get("housing-form-places") }})
+          {% if let Some(sex) = unit.designated_sex %} - {{ sex }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      {{ t.get("form-notes") }}
+      <textarea name="notes" rows="2"></textarea>
+    </label>
+
+    <div class="form-actions">
+      <button type="submit">{{ t.get("form-submit") }}</button>
+      <button type="button"
+              hx-get="/detainees/{{ detainee_id }}/view"
+              hx-target="body"
+              class="secondary">
+        {{ t.get("form-cancel") }}
+      </button>
+    </div>
+  </form>
+</article>

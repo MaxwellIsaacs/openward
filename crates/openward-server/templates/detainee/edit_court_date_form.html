@@ -1,0 +1,39 @@
+<article>
+  <header>{{ t.get("court-form-edit-title") }}</header>
+  <form hx-post="/detainees/{{ detainee_id }}/update-court-date/{{ court_date_id }}"
+        hx-target="#action-target">
+
+    <label>
+      {{ t.get("court-form-date") }}
+      <input type="date" name="scheduled_date" value="{{ scheduled_date }}" required>
+    </label>
+
+    <label>
+      {{ t.get("court-form-court-name") }}
+      <input type="text" name="court_name" value="{{ court_name }}" required>
+    </label>
+
+    <label>
+      {{ t.get("court-form-purpose") }}
+      <select name="purpose" required>
+        <option value="FirstAppearance" {% if purpose_code == "FirstAppearance" %}selected{% endif %}>{{ t.get("legal-court-first-appearance") }}</option>
+        <option value="BailHearing" {% if purpose_code == "BailHearing" %}selected{% endif %}>{{ t.get("legal-court-bail-hearing") }}</option>
+        <option value="RemandReview" {% if purpose_code == "RemandReview" %}selected{% endif %}>{{ t.get("legal-court-remand-review") }}</option>
+        <option value="TrialHearing" {% if purpose_code == "TrialHearing" %}selected{% endif %}>{{ t.get("legal-court-trial") }}</option>
+        <option value="Sentencing" {% if purpose_code == "Sentencing" %}selected{% endif %}>{{ t.get("legal-court-sentencing") }}</option>
+        <option value="AppealHearing" {% if purpose_code == "AppealHearing" %}selected{% endif %}>{{ t.get("legal-court-appeal") }}</option>
+        <option value="Other" {% if purpose_code == "Other" %}selected{% endif %}>{{ t.get("legal-court-other") }}</option>
+      </select>
+    </label>
+
+    <div class="form-actions">
+      <button type="submit">{{ t.get("court-form-update") }}</button>
+      <button type="button"
+              hx-get="/detainees/{{ detainee_id }}/view"
+              hx-target="body"
+              class="secondary">
+        {{ t.get("form-cancel") }}
+      </button>
+    </div>
+  </form>
+</article>
