@@ -24,6 +24,28 @@ pub struct Session {
     pub must_change_password: bool,
 }
 
+/// Return "; Secure" when the request reached us over HTTPS, "" otherwise.
+///
+/// The server is always fronted by a reverse proxy in production (Caddy
+/// terminates TLS and forwards to 127.0.0.1:3000), so we detect TLS by
+/// inspecting the proxy's `X-Forwarded-Proto` header. Local plain-HTTP dev
+/// gets no Secure flag, which is what we want — otherwise the browser would
+/// drop the cookie and login would silently fail.
+pub(crate) fn secure_attr(headers: &HeaderMap) -> &'static str {
+    let proto = headers
+        .get("x-forwarded-proto")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    // Header may be a comma-separated list when multiple proxies are chained;
+    // the originating scheme is the first entry.
+    let first = proto.split(',').next().unwrap_or("").trim();
+    if first.eq_ignore_ascii_case("https") {
+        "; Secure"
+    } else {
+        ""
+    }
+}
+
 /// Extract a cookie value by name from headers.
 fn get_cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     let cookie_header = headers.get(header::COOKIE)?.to_str().ok()?;
@@ -138,8 +160,10 @@ pub struct LoginForm {
 /// POST /login
 pub async fn login_submit(
     State(state): State<AppState_>,
+    headers: HeaderMap,
     Form(form): Form<LoginForm>,
 ) -> Response {
+    let secure = secure_attr(&headers);
     let pool = state.registry.pool();
 
     // Validate language, fallback to default
@@ -208,12 +232,12 @@ pub async fn login_submit(
         .await;
 
     let session_cookie = format!(
-        "{}={}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400",
-        COOKIE_NAME, session_id
+        "{}={}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400{}",
+        COOKIE_NAME, session_id, secure
     );
     let lang_cookie = format!(
-        "{}={}; Path=/; SameSite=Strict; Max-Age=31536000",
-        LANG_COOKIE_NAME, lang
+        "{}={}; Path=/; SameSite=Strict; Max-Age=31536000{}",
+        LANG_COOKIE_NAME, lang, secure
     );
 
     let redirect_to = if must_change_pw != 0 { "/profile" } else { "/" };
@@ -248,8 +272,9 @@ pub async fn logout(
     }
 
     let cookie = format!(
-        "{}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0",
-        COOKIE_NAME
+        "{}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0{}",
+        COOKIE_NAME,
+        secure_attr(&headers)
     );
     (
         StatusCode::SEE_OTHER,

@@ -174,8 +174,9 @@ pub async fn change_language(
 
     // Set language cookie and redirect back to profile
     let lang_cookie = format!(
-        "openward_lang={}; Path=/; SameSite=Strict; Max-Age=31536000",
-        lang
+        "openward_lang={}; Path=/; SameSite=Strict; Max-Age=31536000{}",
+        lang,
+        crate::web::auth::secure_attr(&headers)
     );
 
     let mut response = (
