@@ -147,9 +147,18 @@ if the name does not resolve to this server.
 
 ### 3. Box bootstrap (as `root`)
 
+Caddy is not in the default Ubuntu 24.04 archive — add the official
+Cloudsmith apt source first.
+
 ```bash
 apt update
-apt install -y build-essential pkg-config libssl-dev sqlite3 ufw caddy curl git ca-certificates
+apt install -y debian-keyring debian-archive-keyring apt-transport-https curl gnupg ca-certificates
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+    | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+    | tee /etc/apt/sources.list.d/caddy-stable.list
+apt update
+apt install -y build-essential pkg-config libssl-dev sqlite3 ufw caddy git
 ```
 
 Firewall — never expose the OpenWard port directly:
@@ -171,17 +180,25 @@ chown -R openward:openward /var/lib/openward
 
 ### 5. Build OpenWard natively on the box
 
+Build as the default `ubuntu` user, not as `openward` — the openward
+service user has no shell and no home (created with `--no-create-home
+--shell /usr/sbin/nologin` in step 4 so that a stolen service ticket
+can't open a login session). Use any non-root account with a home and
+a shell; `ubuntu` is the default on Hetzner Ubuntu images.
+
 ```bash
-sudo -iu openward bash <<'EOS'
+sudo -u ubuntu bash <<'EOS'
 cd ~
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
 source ~/.cargo/env
-git clone https://github.com/openward/openward /opt/openward-src
+git clone https://github.com/openward/openward /tmp/openward-src
+sudo mv /tmp/openward-src/* /tmp/openward-src/.[!.]* /opt/openward-src/ 2>/dev/null || true
+sudo chown -R ubuntu:ubuntu /opt/openward-src
 cd /opt/openward-src
 cargo build --release --workspace
 EOS
 
-# Cold compile takes ~10 minutes on a CAX11 — that is normal.
+# Cold compile: ~10 min on a CAX11, ~3 min on a fast x86 VM — normal.
 install -m 0755 /opt/openward-src/target/release/openward-server /opt/openward/openward-server
 install -m 0755 /opt/openward-src/target/release/openward-seed /opt/openward/openward-seed
 ```
@@ -230,13 +247,23 @@ accidental reseeding.
 
 ### 9. Caddy
 
+Create and chown the log directory **before** loading the new
+Caddyfile. The reload runs under the already-running `caddy` user; if
+the log path doesn't exist yet, Caddy will fail to open the log writer
+and refuse the new config.
+
 ```bash
-install -m 0644 /opt/openward-src/deploy/Caddyfile /etc/caddy/Caddyfile
 mkdir -p /var/log/caddy
 chown caddy:caddy /var/log/caddy
+install -m 0644 /opt/openward-src/deploy/Caddyfile /etc/caddy/Caddyfile
+caddy validate --config /etc/caddy/Caddyfile
 systemctl reload caddy
 journalctl -u caddy -n 30 --no-pager      # look for "certificate obtained"
 ```
+
+If a previous reload attempt left a stale `openward-demo.log` owned by
+root, delete it before retrying — Caddy cannot reopen a root-owned
+file as its own user.
 
 ### 10. Smoke test
 
