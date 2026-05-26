@@ -179,7 +179,7 @@
   </form>
 
   <div id="results-container">
-    <table>
+    <table class="responsive-table">
       <thead>
         <tr>
           <th>{{ t.get("population-col-name") }}</th>
@@ -194,23 +194,23 @@
       <tbody>
         {% for d in detainees %}
         <tr>
-          <td>
+          <td data-label="{{ t.get("population-col-name") }}" class="cell-primary">
             <a href="/detainees/{{ d.id }}/view">
               <strong>{{ d.name }}</strong>
             </a>
           </td>
-          <td>{{ d.sex }}</td>
-          <td>{{ d.detention_basis }}</td>
-          <td>{{ d.intake_date }}</td>
-          <td>{{ d.days_held }}</td>
-          <td>
+          <td data-label="{{ t.get("population-col-sex") }}">{{ d.sex }}</td>
+          <td data-label="{{ t.get("population-col-basis") }}">{{ d.detention_basis }}</td>
+          <td data-label="{{ t.get("population-col-intake") }}">{{ d.intake_date }}</td>
+          <td data-label="{{ t.get("population-col-days") }}">{{ d.days_held }}</td>
+          <td data-label="{{ t.get("population-col-court") }}">
             {% if let Some(court_date) = d.next_court_date %}
               {{ court_date }}
             {% else %}
               <span class="text-muted">—</span>
             {% endif %}
           </td>
-          <td>
+          <td data-label="{{ t.get("population-col-alerts") }}">
             <div class="flags">
               {% for flag in d.flags %}
                 <span class="badge">{{ flag }}</span>

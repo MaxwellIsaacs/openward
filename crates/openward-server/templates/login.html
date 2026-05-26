@@ -9,8 +9,8 @@
     <script src="/static/htmx.min.js"></script>
 </head>
 <body>
-    <main style="margin-top: 15vh;">
-        <article style="max-width: 400px; margin-left: auto; margin-right: auto;">
+    <main class="login-main">
+        <article class="login-card">
             <h1>{{ t.get("login-title") }}</h1>
 
             {% if let Some(err) = error %}

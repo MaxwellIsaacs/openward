@@ -9,12 +9,16 @@
     <script src="/static/htmx.min.js"></script>
 </head>
 <body>
-    <header>
+    <header class="site-header">
         <nav>
-            <ul>
+            <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+            <ul class="nav-brand">
                 <li><strong>OpenWard</strong></li>
+                <li><label for="nav-toggle" class="nav-burger" aria-hidden="true">
+                    <span></span><span></span><span></span>
+                </label></li>
             </ul>
-            <ul>
+            <ul class="nav-links">
                 <li><a href="/" {% if nav.current_path == "/" %}aria-current="page"{% endif %}>{{ t.get("nav-dashboard") }}</a></li>
                 <li><a href="/detainees" {% if nav.current_path.starts_with("/detainees") %}aria-current="page"{% endif %}>{{ t.get("nav-population") }}</a></li>
                 <li><a href="/admit" {% if nav.current_path == "/admit" %}aria-current="page"{% endif %}>{{ t.get("nav-admission") }}</a></li>
@@ -30,10 +34,10 @@
                 <li><a href="/backup" {% if nav.current_path == "/backup" %}aria-current="page"{% endif %}>{{ t.get("nav-backup") }}</a></li>
                 {% endif %}
             </ul>
-            <ul>
+            <ul class="nav-user">
                 <li><a href="/profile">{{ nav.operator_name }}</a></li>
                 <li>
-                    <form method="post" action="/logout" style="display: inline; margin: 0;">
+                    <form method="post" action="/logout" class="logout-form">
                         <button type="submit" class="link-button">{{ t.get("nav-logout") }}</button>
                     </form>
                 </li>

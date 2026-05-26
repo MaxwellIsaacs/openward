@@ -307,3 +307,281 @@ dl dt {
 .pagination a {
   cursor: pointer;
 }
+
+/* ==========================================================================
+   Mobile rework — phone-friendly nav, tables, filters, tap targets.
+   Desktop layout (>= 768px) is unchanged from above.
+   ========================================================================== */
+
+/* Login page layout. */
+.login-main {
+  margin-top: 15vh;
+}
+.login-card {
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 767px) {
+  .login-main {
+    margin-top: 4vh;
+    padding: 0 0.75rem;
+  }
+  .login-card {
+    max-width: 100%;
+  }
+}
+
+/* Hide hamburger checkbox accessibly (still keyboard-focusable via label). */
+.nav-toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Hamburger button: hidden by default, shown on mobile. */
+.nav-burger {
+  display: none;
+}
+
+/* On desktop, the brand <ul> behaves like a normal Pico nav <ul>:
+   the burger <li> is hidden, so it's just the "OpenWard" wordmark. */
+.nav-brand .nav-burger {
+  display: none;
+}
+
+.logout-form {
+  display: inline;
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  /* Sticky header keeps the nav reachable without a long scroll back to top. */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--pico-background-color);
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    padding: 0.25rem 0.75rem;
+    margin: 0;
+  }
+
+  .site-header nav {
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 0;
+  }
+
+  .site-header nav > ul {
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Top row: brand + burger, always visible. */
+  .nav-brand {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0.25rem 0;
+  }
+  .nav-brand li {
+    padding: 0;
+  }
+
+  .nav-brand .nav-burger {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.5rem;
+    border-radius: 4px;
+  }
+  .nav-burger:hover {
+    background: var(--pico-secondary-background);
+  }
+  .nav-burger span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: currentColor;
+    transition: transform 0.2s ease, opacity 0.15s ease;
+  }
+
+  /* Collapsed by default; expanded when checkbox is checked. */
+  .nav-links,
+  .nav-user {
+    display: none !important;
+    flex-direction: column !important;
+    width: 100%;
+    padding: 0.25rem 0 0.5rem;
+    gap: 0;
+    border-top: 1px solid var(--pico-muted-border-color);
+    margin-top: 0.25rem;
+  }
+  .nav-toggle:checked ~ .nav-links,
+  .nav-toggle:checked ~ .nav-user {
+    display: flex !important;
+  }
+
+  .nav-links li,
+  .nav-user li {
+    width: 100%;
+    padding: 0;
+  }
+
+  .nav-links a,
+  .nav-user a,
+  .nav-user button.link-button {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 0.5rem;
+    min-height: 44px;
+    text-align: left;
+    border-radius: 4px;
+    text-decoration: none;
+    line-height: 1.4;
+  }
+  .nav-links a[aria-current="page"] {
+    background: var(--pico-secondary-background);
+    font-weight: 600;
+  }
+  .nav-links a:hover,
+  .nav-user a:hover,
+  .nav-user button.link-button:hover {
+    background: var(--pico-secondary-hover);
+  }
+
+  /* Burger → X animation when nav open. */
+  .nav-toggle:checked ~ .nav-brand .nav-burger span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+  .nav-toggle:checked ~ .nav-brand .nav-burger span:nth-child(2) {
+    opacity: 0;
+  }
+  .nav-toggle:checked ~ .nav-brand .nav-burger span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  /* Stack filter and action bars on phones. */
+  .filter-bar,
+  .filter-grid,
+  .actions,
+  .quick-links {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filter-bar select,
+  .filter-bar input,
+  .filter-grid select,
+  .filter-grid input {
+    width: 100%;
+  }
+  .actions button,
+  .actions a[role="button"],
+  .quick-links a[role="button"] {
+    width: 100%;
+    min-height: 44px;
+    font-size: 1em;
+  }
+
+  /* Detail panels: single column on phones. */
+  .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 0.25rem 0;
+  }
+  .detail-grid dd {
+    margin-bottom: 0.75rem;
+  }
+
+  /* Stat cards: 2-up on phones instead of one giant column. */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  .stat-card .stat-value {
+    font-size: 1.6em;
+  }
+
+  /* Pagination: wrap nicely. */
+  .pagination {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  /* Non-opt-in tables get a horizontal-scroll fallback so they don't blow out
+     the viewport. The .responsive-table override below uses card layout instead. */
+  main table:not(.responsive-table) {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  /* Responsive tables: each row becomes a card, each cell stacks with its label. */
+  table.responsive-table,
+  table.responsive-table thead,
+  table.responsive-table tbody,
+  table.responsive-table tr,
+  table.responsive-table td {
+    display: block;
+    width: 100%;
+  }
+  table.responsive-table thead {
+    /* Header row is redundant once labels are inline; hide it visually. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  table.responsive-table tr {
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    background: var(--pico-card-background-color);
+  }
+  table.responsive-table td {
+    padding: 0.35rem 0;
+    border: none;
+    text-align: left;
+    font-size: 0.95em;
+  }
+  table.responsive-table td[data-label]::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    color: var(--pico-muted-color);
+    font-size: 0.85em;
+    display: inline-block;
+    margin-right: 0.4em;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  /* Primary cell (usually the linked name) gets bigger treatment and no label. */
+  table.responsive-table td.cell-primary {
+    padding: 0 0 0.5rem 0;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    font-size: 1.05em;
+  }
+  table.responsive-table td.cell-primary::before {
+    content: none;
+  }
+  table.responsive-table td.cell-primary a {
+    display: block;
+    min-height: 32px;
+  }
+}
