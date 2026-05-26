@@ -460,13 +460,17 @@ button.link-button:focus {
     padding: 0;
   }
 
+  .nav-links li,
+  .nav-user li {
+    margin: 0.15rem 0;
+  }
   .nav-links a,
   .nav-user a,
   .nav-user button.link-button {
     display: block;
     width: 100%;
-    padding: 0.75rem 0.5rem;
-    min-height: 44px;
+    padding: 1rem 0.75rem;
+    min-height: 48px;
     text-align: left;
     border-radius: 4px;
     text-decoration: none;
