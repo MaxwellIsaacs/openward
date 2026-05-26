@@ -126,6 +126,17 @@
 .htmx-request .htmx-indicator,
 .htmx-request.htmx-indicator { display: inline-block; }
 
+/* Visible loading spinner for slow connections — the canonical .htmx-indicator
+   in OpenWard is a brief "Loading…" span or the implicit request state. Give
+   buttons a subtle inflight opacity so the user sees their tap registered. */
+.htmx-request button,
+.htmx-request a[role="button"],
+button.htmx-request,
+a[role="button"].htmx-request {
+  opacity: 0.7;
+  cursor: progress;
+}
+
 /* === Released banner === */
 .released-banner {
   background: #198754;
@@ -841,5 +852,59 @@ button.link-button:focus {
   table.responsive-table .inline-form button {
     width: 100%;
     min-height: 44px;
+  }
+}
+
+/* ==========================================================================
+   Pass 5 polish — tactile feedback, a11y, motion preferences.
+   ========================================================================== */
+
+/* Tactile :active for taps. Subtle dim + nudge so the user knows the tap landed
+   before the request comes back. Applies everywhere, not just mobile. */
+button:active,
+a[role="button"]:active,
+.alert-card-link:active,
+.nav-links a:active,
+.nav-user a:active {
+  transform: translateY(1px);
+  opacity: 0.85;
+}
+
+/* Keyboard focus rings — Pico's default is decent but we want it always on. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+label:focus-within {
+  outline: 2px solid var(--pico-primary);
+  outline-offset: 2px;
+}
+
+/* Honor users who've asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  button:active,
+  a[role="button"]:active {
+    transform: none;
+  }
+}
+
+/* Flash messages as sticky toasts on mobile so they're visible even after
+   scrolling within a long page (detainee detail, dashboard). */
+@media (max-width: 767px) {
+  .flash {
+    position: sticky;
+    top: 3.5rem; /* sits below the sticky site-header */
+    z-index: 50;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   }
 }
