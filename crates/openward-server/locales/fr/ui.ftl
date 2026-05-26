@@ -551,6 +551,8 @@ batch-admission-shared-warrant = Informations du mandat commun
 batch-admission-detainees = Détenus
 batch-admission-add-row = Ajouter une ligne
 batch-admission-submit = Enregistrer tous
+batch-admission-mobile-hint = L'admission groupée fonctionne mieux sur tablette ou ordinateur. Pour un seul détenu sur téléphone,
+batch-admission-mobile-single-link = utilisez le formulaire d'admission individuelle.
 
 ## Modification date d'audience
 court-form-edit-title = Modifier la date d'audience

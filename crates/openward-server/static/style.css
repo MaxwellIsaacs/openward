@@ -175,6 +175,17 @@
   border: 1px solid #dc3545;
   color: #842029;
 }
+.flash-info {
+  background: #cfe2ff;
+  border: 1px solid #0d6efd;
+  color: #084298;
+}
+
+/* Visibility helpers for responsive content. */
+.mobile-only { display: none; }
+@media (max-width: 767px) {
+  .mobile-only { display: block; }
+}
 
 /* === Legend row === */
 .legend {
@@ -328,6 +339,26 @@ button.danger.secondary,
 
 .status-active { color: var(--pico-ins-color); font-weight: 600; }
 .status-inactive { color: var(--pico-del-color); }
+
+/* === Detainee detail action row === */
+.actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.actions-row > button,
+.actions-row > a[role="button"] {
+  margin: 0;
+}
+
+/* Flag badges block on detainee detail. */
+.flags-section .flags,
+.flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
 
 /* === Form action button rows === */
 .form-actions {
@@ -576,13 +607,67 @@ button.link-button:focus {
     margin-bottom: 0.75rem;
   }
 
-  /* Stat cards: 2-up on phones instead of one giant column. */
+  /* Stat cards: 2-up on phones instead of one giant column.
+     Population gauge is the most important so it goes full-width on top. */
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
   }
+  .stats-grid > article:first-child {
+    grid-column: 1 / -1;
+  }
   .stat-card .stat-value {
     font-size: 1.6em;
+  }
+
+  /* Alerts grid: single-column under 480px so each alert is a full-width
+     tap target rather than a 130px-wide nub. */
+  .alerts-grid {
+    grid-template-columns: 1fr;
+  }
+  .alert-card-link {
+    min-height: 48px;
+    padding: 0.75rem 0.5rem;
+  }
+
+  /* Dashboard quick-action button row stacks vertically. */
+  .quick-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .quick-actions > a,
+  .quick-actions > button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  /* Detainee detail .actions-row: full-width stacked buttons. */
+  .actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .actions-row > button,
+  .actions-row > a[role="button"] {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  /* Basis-breakdown legend: stack the items so each is a real tap target. */
+  .breakdown-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+  }
+  .breakdown-legend .legend-item {
+    padding: 0.4rem 0.25rem;
+    min-height: 36px;
+  }
+  /* Keep breakdown-bar usable: don't let any segment shrink below readable. */
+  .breakdown-bar .segment {
+    min-height: 2rem;
+    font-size: 0.85em;
   }
 
   /* Pagination: wrap nicely. */

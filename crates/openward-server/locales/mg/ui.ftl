@@ -551,6 +551,8 @@ batch-admission-shared-warrant = Shared warrant information
 batch-admission-detainees = Detainees
 batch-admission-add-row = Add row
 batch-admission-submit = Register all
+batch-admission-mobile-hint = Batch admission works best on a tablet or desktop. For one detainee on a phone,
+batch-admission-mobile-single-link = use the single-admission form.
 
 ## Court date editing
 court-form-edit-title = Edit court date

@@ -8,6 +8,11 @@
   <p>{{ t.get("batch-admission-subtitle") }}</p>
 </hgroup>
 
+<p class="flash flash-info mobile-only">
+  {{ t.get("batch-admission-mobile-hint") }}
+  <a href="/admit">{{ t.get("batch-admission-mobile-single-link") }}</a>
+</p>
+
 <form method="post" action="/admit/batch">
   <article>
     <header>{{ t.get("batch-admission-shared-warrant") }}</header>
