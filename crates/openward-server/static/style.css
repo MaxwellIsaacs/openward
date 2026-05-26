@@ -329,6 +329,19 @@ button.danger.secondary,
 .status-active { color: var(--pico-ins-color); font-weight: 600; }
 .status-inactive { color: var(--pico-del-color); }
 
+/* === Form action button rows === */
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+.form-actions > button,
+.form-actions > a[role="button"] {
+  margin: 0;
+}
+
 /* === Pagination === */
 .pagination {
   display: flex;
@@ -577,6 +590,71 @@ button.link-button:focus {
     flex-direction: column;
     gap: 0.5rem;
     align-items: stretch;
+  }
+
+  /* === Forms: thumb-friendly inputs and stacked layouts on phones. === */
+
+  /* 16px minimum prevents iOS Safari from zooming on focus; 48px is the
+     Material tap-target floor. Pico's default input is ~36px which is too
+     small for cheap-Android touchscreens. */
+  main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  main select,
+  main textarea {
+    font-size: 16px;
+    min-height: 48px;
+    width: 100%;
+  }
+  main textarea {
+    min-height: 6rem;
+  }
+
+  /* Pico's <label>wrapping<input></label> idiom: keep labels block-level. */
+  main form label {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Submit buttons go full-width by default on phones. */
+  main form button[type="submit"],
+  main form button:not([type]) {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 0.5rem;
+  }
+
+  /* .form-actions row stacks vertically; submit ends up on top, cancel below. */
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .form-actions > button,
+  .form-actions > a[role="button"] {
+    width: 100%;
+    min-height: 48px;
+    margin: 0;
+  }
+
+  /* Pico .grid inside a form (used for side-by-side fields like min/max days)
+     collapses to one-per-row on phones. */
+  main form .grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem;
+  }
+
+  /* Inline forms inside tables/lists still go column-stack on phones. */
+  main .inline-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+    margin: 0;
+  }
+  main .inline-form input,
+  main .inline-form select,
+  main .inline-form button {
+    width: 100%;
+    margin: 0;
   }
 
   /* Non-opt-in tables get a horizontal-scroll fallback so they don't blow out
