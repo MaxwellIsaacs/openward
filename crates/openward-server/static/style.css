@@ -454,13 +454,15 @@ dl dt {
     line-height: 1.4;
   }
   .nav-links a[aria-current="page"] {
-    background: var(--pico-secondary-background);
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
     font-weight: 600;
   }
   .nav-links a:hover,
   .nav-user a:hover,
   .nav-user button.link-button:hover {
-    background: var(--pico-secondary-hover);
+    background: var(--pico-muted-border-color);
+    color: var(--pico-color);
   }
 
   /* Burger → X animation when nav open. */
