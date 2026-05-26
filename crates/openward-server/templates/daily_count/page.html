@@ -30,7 +30,7 @@
     </div>
   </div>
 
-  <table>
+  <table class="responsive-table">
     <thead>
       <tr>
         <th>{{ t.get("daily-count-movement-type") }}</th>
@@ -39,30 +39,30 @@
     </thead>
     <tbody>
       <tr>
-        <td>{{ t.get("daily-count-transfers-out") }}</td>
-        <td>{{ count_data.transfers_out }}</td>
+        <td data-label="{{ t.get("daily-count-movement-type") }}" class="cell-primary">{{ t.get("daily-count-transfers-out") }}</td>
+        <td data-label="{{ t.get("daily-count-movement-count") }}">{{ count_data.transfers_out }}</td>
       </tr>
       <tr>
-        <td>{{ t.get("daily-count-to-court") }}</td>
-        <td>{{ count_data.to_court }}</td>
+        <td data-label="{{ t.get("daily-count-movement-type") }}" class="cell-primary">{{ t.get("daily-count-to-court") }}</td>
+        <td data-label="{{ t.get("daily-count-movement-count") }}">{{ count_data.to_court }}</td>
       </tr>
       <tr>
-        <td>{{ t.get("daily-count-to-hospital") }}</td>
-        <td>{{ count_data.to_hospital }}</td>
+        <td data-label="{{ t.get("daily-count-movement-type") }}" class="cell-primary">{{ t.get("daily-count-to-hospital") }}</td>
+        <td data-label="{{ t.get("daily-count-movement-count") }}">{{ count_data.to_hospital }}</td>
       </tr>
       <tr>
-        <td>{{ t.get("daily-count-escapes") }}</td>
-        <td>{{ count_data.escapes }}</td>
+        <td data-label="{{ t.get("daily-count-movement-type") }}" class="cell-primary">{{ t.get("daily-count-escapes") }}</td>
+        <td data-label="{{ t.get("daily-count-movement-count") }}">{{ count_data.escapes }}</td>
       </tr>
       <tr>
-        <td>{{ t.get("daily-count-deaths") }}</td>
-        <td>{{ count_data.deaths }}</td>
+        <td data-label="{{ t.get("daily-count-movement-type") }}" class="cell-primary">{{ t.get("daily-count-deaths") }}</td>
+        <td data-label="{{ t.get("daily-count-movement-count") }}">{{ count_data.deaths }}</td>
       </tr>
     </tbody>
     <tfoot>
       <tr>
-        <th>{{ t.get("daily-count-computed-closing") }}</th>
-        <th>{{ count_data.computed_closing }}</th>
+        <th data-label="{{ t.get("daily-count-movement-type") }}" class="cell-primary">{{ t.get("daily-count-computed-closing") }}</th>
+        <th data-label="{{ t.get("daily-count-movement-count") }}">{{ count_data.computed_closing }}</th>
       </tr>
     </tfoot>
   </table>
@@ -72,7 +72,7 @@
   <header>{{ t.get("daily-count-unit-counts") }}</header>
 
   {% if !units_with_counts.is_empty() %}
-  <table>
+  <table class="responsive-table">
     <thead>
       <tr>
         <th>{{ t.get("daily-count-unit") }}</th>
@@ -83,15 +83,15 @@
     <tbody>
       {% for unit in units_with_counts %}
       <tr>
-        <td>{{ unit.name }}</td>
-        <td>
+        <td data-label="{{ t.get("daily-count-unit") }}" class="cell-primary">{{ unit.name }}</td>
+        <td data-label="{{ t.get("daily-count-headcount") }}">
           {% if let Some(c) = unit.count %}
             {{ c }}
           {% else %}
             <em>{{ t.get("daily-count-not-entered") }}</em>
           {% endif %}
         </td>
-        <td>
+        <td data-label="{{ t.get("daily-count-action") }}">
           <form hx-post="/daily-count/{{ date }}/headcount" class="inline-form">
             <input type="hidden" name="unit_id" value="{{ unit.id }}">
             <input type="number" name="count" min="0" required>

@@ -23,7 +23,7 @@
   <p>{{ t.get("housing-no-units") }}</p>
 </article>
 {% else %}
-<table>
+<table class="responsive-table">
   <thead>
     <tr>
       <th>{{ t.get("housing-col-name") }}</th>
@@ -38,32 +38,30 @@
   <tbody>
     {% for unit in units %}
     <tr>
-      <td><strong>{{ unit.name }}</strong></td>
-      <td>{{ unit.unit_type }}</td>
-      <td>{{ unit.capacity }}</td>
-      <td>
+      <td data-label="{{ t.get("housing-col-name") }}" class="cell-primary"><strong>{{ unit.name }}</strong></td>
+      <td data-label="{{ t.get("housing-col-type") }}">{{ unit.unit_type }}</td>
+      <td data-label="{{ t.get("housing-col-capacity") }}">{{ unit.capacity }}</td>
+      <td data-label="{{ t.get("housing-col-occupied") }}">
         {% if unit.occupancy > unit.capacity %}
         <span class="flag-critical">{{ unit.occupancy }} / {{ unit.capacity }}</span>
         {% else %}
         {{ unit.occupancy }} / {{ unit.capacity }}
         {% endif %}
       </td>
-      <td>{{ unit.designated_sex.as_deref().unwrap_or("—") }}</td>
-      <td>{{ unit.designated_age_group.as_deref().unwrap_or("—") }}</td>
+      <td data-label="{{ t.get("housing-col-sex") }}">{{ unit.designated_sex.as_deref().unwrap_or("—") }}</td>
+      <td data-label="{{ t.get("housing-col-age-group") }}">{{ unit.designated_age_group.as_deref().unwrap_or("—") }}</td>
       <td>
-        <div class="actions" style="margin: 0;">
-          <button class="secondary"
+        <div class="actions row-actions">
+          <button class="secondary small"
                   hx-get="/housing/{{ unit.id }}/edit-form"
                   hx-target="#housing-action"
-                  hx-swap="innerHTML"
-                  style="font-size: 0.8em; padding: 0.2em 0.6em;">
+                  hx-swap="innerHTML">
             {{ t.get("housing-edit") }}
           </button>
-          <button class="secondary"
+          <button class="secondary small danger"
                   hx-delete="/housing/{{ unit.id }}"
                   hx-target="body"
-                  hx-confirm="{{ t.get_1("housing-delete-confirm", "name", &unit.name) }}"
-                  style="font-size: 0.8em; padding: 0.2em 0.6em; --pico-color: #dc3545; --pico-border-color: #dc3545;">
+                  hx-confirm="{{ t.get_1("housing-delete-confirm", "name", &unit.name) }}">
             {{ t.get("housing-delete") }}
           </button>
         </div>

@@ -23,7 +23,7 @@
   <p>{{ t.get("operators-none") }}</p>
 </article>
 {% else %}
-<table>
+<table class="responsive-table">
   <thead>
     <tr>
       <th>{{ t.get("operators-col-username") }}</th>
@@ -37,27 +37,23 @@
   <tbody>
     {% for op in operators %}
     <tr>
-      <td><strong>{{ op.username }}</strong></td>
-      <td>{{ op.display_name }}</td>
-      <td>{{ op.role_label }}</td>
-      <td>
+      <td data-label="{{ t.get("operators-col-username") }}" class="cell-primary"><strong>{{ op.username }}</strong></td>
+      <td data-label="{{ t.get("operators-col-name") }}">{{ op.display_name }}</td>
+      <td data-label="{{ t.get("operators-col-role") }}">{{ op.role_label }}</td>
+      <td data-label="{{ t.get("operators-col-status") }}">
         {% if op.is_active %}
-        <span style="color: var(--pico-ins-color);">{{ t.get("operators-active") }}</span>
+        <span class="status-active">{{ t.get("operators-active") }}</span>
         {% else %}
-        <span style="color: var(--pico-del-color);">{{ t.get("operators-inactive") }}</span>
+        <span class="status-inactive">{{ t.get("operators-inactive") }}</span>
         {% endif %}
       </td>
-      <td>{{ op.last_login.as_deref().unwrap_or("—") }}</td>
+      <td data-label="{{ t.get("operators-col-last-login") }}">{{ op.last_login.as_deref().unwrap_or("—") }}</td>
       <td>
-        <div class="actions" style="margin: 0;">
-          <a href="/operators/{{ op.id }}/edit"
-             role="button" class="secondary"
-             style="font-size: 0.8em; padding: 0.2em 0.6em;">
+        <div class="actions row-actions">
+          <a href="/operators/{{ op.id }}/edit" role="button" class="secondary small">
             {{ t.get("operators-edit") }}
           </a>
-          <a href="/operators/{{ op.id }}/reset-password"
-             role="button" class="secondary"
-             style="font-size: 0.8em; padding: 0.2em 0.6em;">
+          <a href="/operators/{{ op.id }}/reset-password" role="button" class="secondary small">
             {{ t.get("operators-reset-password") }}
           </a>
         </div>

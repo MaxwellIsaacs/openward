@@ -176,7 +176,7 @@
 {% if !detainee.court_dates.is_empty() %}
 <article>
   <header>{{ t.get("detainee-court-dates") }}</header>
-  <table>
+  <table class="responsive-table">
     <thead>
       <tr>
         <th>{{ t.get("detainee-court-date") }}</th>
@@ -189,10 +189,10 @@
     <tbody>
       {% for cd in detainee.court_dates %}
       <tr>
-        <td>{{ cd.scheduled_date }}</td>
-        <td>{{ cd.court_name }}</td>
-        <td>{{ cd.purpose }}</td>
-        <td>
+        <td data-label="{{ t.get("detainee-court-date") }}" class="cell-primary">{{ cd.scheduled_date }}</td>
+        <td data-label="{{ t.get("detainee-court-name") }}">{{ cd.court_name }}</td>
+        <td data-label="{{ t.get("detainee-court-purpose") }}">{{ cd.purpose }}</td>
+        <td data-label="{{ t.get("detainee-court-outcome") }}">
           {% if let Some(outcome) = cd.outcome %}
             {{ outcome }}
           {% else %}
@@ -203,7 +203,7 @@
           {% if !cd.has_outcome %}
           <button hx-get="/detainees/{{ detainee.id }}/edit-court-date/{{ cd.id }}"
                   hx-target="#action-target"
-                  class="outline" style="margin:0; padding:0.1em 0.5em; font-size:0.8em;">
+                  class="outline small">
             {{ t.get("housing-edit") }}
           </button>
           {% endif %}
@@ -281,7 +281,7 @@
   {% if detainee.property.is_empty() %}
   <p><em>{{ t.get("detainee-property-none") }}</em></p>
   {% else %}
-  <table>
+  <table class="responsive-table">
     <thead>
       <tr>
         <th>{{ t.get("detainee-property-description") }}</th>
@@ -293,15 +293,14 @@
     <tbody>
       {% for item in detainee.property %}
       <tr>
-        <td>{{ item.description }}</td>
-        <td>{{ item.quantity }}</td>
-        <td>{{ item.status }}</td>
+        <td data-label="{{ t.get("detainee-property-description") }}" class="cell-primary">{{ item.description }}</td>
+        <td data-label="{{ t.get("detainee-property-quantity") }}">{{ item.quantity }}</td>
+        <td data-label="{{ t.get("detainee-property-status") }}">{{ item.status }}</td>
         {% if can_add_notes %}
         <td>
           {% if !item.returned %}
-          <form method="post" action="/detainees/{{ detainee.id }}/return-property/{{ item.id }}"
-                style="display:inline;">
-            <button type="submit" class="outline" style="margin:0; padding:0.1em 0.5em; font-size:0.8em;">
+          <form method="post" action="/detainees/{{ detainee.id }}/return-property/{{ item.id }}" class="inline-form">
+            <button type="submit" class="outline small">
               {{ t.get("property-return") }}
             </button>
           </form>
@@ -321,7 +320,7 @@
   {% if audit_entries.is_empty() %}
   <p><em>{{ t.get("audit-no-entries") }}</em></p>
   {% else %}
-  <table>
+  <table class="responsive-table">
     <thead>
       <tr>
         <th>{{ t.get("audit-col-timestamp") }}</th>
@@ -334,11 +333,11 @@
     <tbody>
       {% for entry in audit_entries %}
       <tr>
-        <td><small><a href="/audit/{{ entry.id }}">{{ entry.timestamp }}</a></small></td>
-        <td>{{ entry.operator_name }}</td>
-        <td>{{ entry.module }}</td>
-        <td>{{ entry.action }}</td>
-        <td><small>{{ entry.details }}</small></td>
+        <td data-label="{{ t.get("audit-col-timestamp") }}" class="cell-primary"><a href="/audit/{{ entry.id }}">{{ entry.timestamp }}</a></td>
+        <td data-label="{{ t.get("audit-col-operator") }}">{{ entry.operator_name }}</td>
+        <td data-label="{{ t.get("audit-col-module") }}">{{ entry.module }}</td>
+        <td data-label="{{ t.get("audit-col-action") }}">{{ entry.action }}</td>
+        <td data-label="{{ t.get("audit-col-details") }}"><small>{{ entry.details }}</small></td>
       </tr>
       {% endfor %}
     </tbody>

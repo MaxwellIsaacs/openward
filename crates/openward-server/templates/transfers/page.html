@@ -8,7 +8,7 @@
 </hgroup>
 
 {% if !transfers.is_empty() %}
-<table>
+<table class="responsive-table">
   <thead>
     <tr>
       <th>{{ t.get("transfers-col-date") }}</th>
@@ -21,11 +21,11 @@
   <tbody>
     {% for tr in transfers %}
     <tr>
-      <td>{{ tr.date }}</td>
-      <td><a href="/detainees/{{ tr.detainee_id }}/view">{{ tr.detainee_name }}</a></td>
-      <td>{{ tr.destination }}</td>
-      <td>{{ tr.reason }}</td>
-      <td>{{ tr.authorized_by }}</td>
+      <td data-label="{{ t.get("transfers-col-date") }}" class="cell-primary">{{ tr.date }}</td>
+      <td data-label="{{ t.get("transfers-col-detainee") }}"><a href="/detainees/{{ tr.detainee_id }}/view">{{ tr.detainee_name }}</a></td>
+      <td data-label="{{ t.get("transfers-col-destination") }}">{{ tr.destination }}</td>
+      <td data-label="{{ t.get("transfers-col-reason") }}">{{ tr.reason }}</td>
+      <td data-label="{{ t.get("transfers-col-authorized") }}">{{ tr.authorized_by }}</td>
     </tr>
     {% endfor %}
   </tbody>

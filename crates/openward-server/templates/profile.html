@@ -67,7 +67,7 @@
 
 <section>
     <h2>{{ t.get("profile-active-sessions") }}</h2>
-    <table>
+    <table class="responsive-table">
         <thead>
             <tr>
                 <th>{{ t.get("profile-display-name") }}</th>
@@ -78,13 +78,13 @@
         <tbody>
             {% for s in sessions %}
             <tr>
-                <td>{{ s.display_name }}</td>
-                <td>{{ s.role }}</td>
+                <td data-label="{{ t.get("profile-display-name") }}" class="cell-primary">{{ s.display_name }}</td>
+                <td data-label="{{ t.get("profile-role") }}">{{ s.role }}</td>
                 <td>
                     {% if s.is_current %}
                         <em>{{ t.get("profile-session-current") }}</em>
                     {% else if is_admin %}
-                        <form method="post" action="/admin/sessions/{{ s.id }}/revoke" style="display:inline; margin:0;">
+                        <form method="post" action="/admin/sessions/{{ s.id }}/revoke" class="inline-form">
                             <button type="submit" class="link-button">{{ t.get("profile-revoke") }}</button>
                         </form>
                     {% endif %}

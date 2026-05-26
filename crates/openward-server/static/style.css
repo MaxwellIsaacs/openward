@@ -296,6 +296,39 @@ dl dt {
   text-decoration: none;
 }
 
+/* === Small / inline actions in table rows === */
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+}
+button.small,
+a.small,
+[role="button"].small {
+  font-size: 0.85em;
+  padding: 0.25em 0.7em;
+}
+button.danger,
+[role="button"].danger {
+  --pico-color: #fff;
+  --pico-background-color: #dc3545;
+  --pico-border-color: #dc3545;
+}
+button.danger.secondary,
+[role="button"].danger.secondary {
+  --pico-color: #dc3545;
+  --pico-background-color: transparent;
+}
+
+.inline-form {
+  display: inline;
+  margin: 0;
+}
+
+.status-active { color: var(--pico-ins-color); font-weight: 600; }
+.status-inactive { color: var(--pico-del-color); }
+
 /* === Pagination === */
 .pagination {
   display: flex;
@@ -608,5 +641,42 @@ button.link-button:focus {
   table.responsive-table td.cell-primary a {
     display: block;
     min-height: 32px;
+  }
+
+  /* Row-level actions (edit/delete/etc.) stack as full-width buttons on phones. */
+  table.responsive-table td .row-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+  table.responsive-table td .row-actions > button,
+  table.responsive-table td .row-actions > a {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  /* .small buttons still need to be tappable in card mode. */
+  table.responsive-table button.small,
+  table.responsive-table a.small,
+  table.responsive-table [role="button"].small {
+    font-size: 0.95em;
+    padding: 0.5em 0.9em;
+    min-height: 44px;
+  }
+
+  /* Inline form inside table cell (e.g., daily-count headcount entry) goes full-width. */
+  table.responsive-table .inline-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+  }
+  table.responsive-table .inline-form input {
+    width: 100%;
+    margin: 0;
+  }
+  table.responsive-table .inline-form button {
+    width: 100%;
+    min-height: 44px;
   }
 }

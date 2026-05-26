@@ -12,7 +12,7 @@
   <header>{{ t.get("court-calendar-upcoming") }}</header>
 
   {% if !upcoming.is_empty() %}
-  <table>
+  <table class="responsive-table">
     <thead>
       <tr>
         <th>{{ t.get("court-calendar-col-date") }}</th>
@@ -25,17 +25,17 @@
     <tbody>
       {% for cd in upcoming %}
       <tr>
-        <td>
+        <td data-label="{{ t.get("court-calendar-col-date") }}" class="cell-primary">
           <strong>{{ cd.scheduled_date }}</strong>
         </td>
-        <td>
+        <td data-label="{{ t.get("court-calendar-col-detainee") }}">
           <a href="/detainees/{{ cd.detainee_id }}/view">
             {{ cd.detainee_name }}
           </a>
         </td>
-        <td>{{ cd.court_name }}</td>
-        <td>{{ cd.purpose }}</td>
-        <td>
+        <td data-label="{{ t.get("court-calendar-col-court") }}">{{ cd.court_name }}</td>
+        <td data-label="{{ t.get("court-calendar-col-purpose") }}">{{ cd.purpose }}</td>
+        <td data-label="{{ t.get("court-calendar-col-action") }}">
           <div id="outcome-form-{{ cd.id }}"></div>
           <button hx-get="/court-calendar/{{ cd.id }}/outcome-form"
                   hx-target="#outcome-form-{{ cd.id }}"
@@ -56,7 +56,7 @@
   <header>{{ t.get("court-calendar-past") }}</header>
 
   {% if !past.is_empty() %}
-  <table>
+  <table class="responsive-table">
     <thead>
       <tr>
         <th>{{ t.get("court-calendar-col-date") }}</th>
@@ -69,15 +69,15 @@
     <tbody>
       {% for cd in past %}
       <tr>
-        <td>{{ cd.scheduled_date }}</td>
-        <td>
+        <td data-label="{{ t.get("court-calendar-col-date") }}" class="cell-primary">{{ cd.scheduled_date }}</td>
+        <td data-label="{{ t.get("court-calendar-col-detainee") }}">
           <a href="/detainees/{{ cd.detainee_id }}/view">
             {{ cd.detainee_name }}
           </a>
         </td>
-        <td>{{ cd.court_name }}</td>
-        <td>{{ cd.purpose }}</td>
-        <td>
+        <td data-label="{{ t.get("court-calendar-col-court") }}">{{ cd.court_name }}</td>
+        <td data-label="{{ t.get("court-calendar-col-purpose") }}">{{ cd.purpose }}</td>
+        <td data-label="{{ t.get("court-calendar-col-outcome") }}">
           {% if cd.has_outcome %}
             {{ cd.outcome_summary }}
           {% else %}

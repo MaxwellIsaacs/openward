@@ -27,7 +27,7 @@
 
   {% if !result.breaks.is_empty() %}
   <h3>{{ t.get("audit-verify-breaks") }}</h3>
-  <table>
+  <table class="responsive-table">
     <thead>
       <tr>
         <th>{{ t.get("audit-verify-break-index") }}</th>
@@ -39,10 +39,10 @@
     <tbody>
       {% for b in result.breaks %}
       <tr>
-        <td>{{ b.entry_index }}</td>
-        <td><small>{{ b.entry_id }}</small></td>
-        <td>{{ b.epoch }}</td>
-        <td>{{ b.break_type }}</td>
+        <td data-label="{{ t.get("audit-verify-break-index") }}" class="cell-primary">{{ b.entry_index }}</td>
+        <td data-label="{{ t.get("audit-verify-break-id") }}"><small>{{ b.entry_id }}</small></td>
+        <td data-label="{{ t.get("audit-verify-break-epoch") }}">{{ b.epoch }}</td>
+        <td data-label="{{ t.get("audit-verify-break-type") }}">{{ b.break_type }}</td>
       </tr>
       {% endfor %}
     </tbody>

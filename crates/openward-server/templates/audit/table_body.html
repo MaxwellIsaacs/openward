@@ -1,4 +1,4 @@
-<table>
+<table class="responsive-table">
   <thead>
     <tr>
       <th>{{ t.get("audit-col-timestamp") }}</th>
@@ -12,11 +12,11 @@
   <tbody>
     {% for entry in entries %}
     <tr>
-      <td><small><a href="/audit/{{ entry.id }}">{{ entry.timestamp }}</a></small></td>
-      <td>{{ entry.operator_name }}</td>
-      <td>{{ entry.module }}</td>
-      <td>{{ entry.action }}</td>
-      <td>
+      <td data-label="{{ t.get("audit-col-timestamp") }}" class="cell-primary"><a href="/audit/{{ entry.id }}">{{ entry.timestamp }}</a></td>
+      <td data-label="{{ t.get("audit-col-operator") }}">{{ entry.operator_name }}</td>
+      <td data-label="{{ t.get("audit-col-module") }}">{{ entry.module }}</td>
+      <td data-label="{{ t.get("audit-col-action") }}">{{ entry.action }}</td>
+      <td data-label="{{ t.get("audit-col-target") }}">
         {% if let Some(name) = entry.target_name %}
           {% if let Some(tid) = entry.target_id %}
             <a href="/detainees/{{ tid }}/view">{{ name }}</a>
@@ -27,7 +27,7 @@
           <span class="text-muted">—</span>
         {% endif %}
       </td>
-      <td><small>{{ entry.details }}</small></td>
+      <td data-label="{{ t.get("audit-col-details") }}"><small>{{ entry.details }}</small></td>
     </tr>
     {% endfor %}
   </tbody>
