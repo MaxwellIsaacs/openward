@@ -6,6 +6,17 @@ Live demo: **[openward-demo.maxisaacs.com](https://openward-demo.maxisaacs.com)*
 
 OpenWard manages the detainee lifecycle — admission, detention basis, court dates, warrants, housing, property, release — for small prisons that today run on paper ledgers. It is designed for the operating reality of facilities in places like Madagascar and the Eastern Caribbean: a Raspberry Pi in a back office, intermittent power, no IT staff, operators with limited technical literacy, and legal-compliance requirements (custody time limits, juvenile separation, audit accountability) that paper systems routinely fail.
 
+<table>
+  <tr>
+    <td><img src="docs/img/dashboard.png" alt="Facility dashboard"></td>
+    <td><img src="docs/img/detainee.png" alt="Detainee detail with compliance alerts"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/population.png" alt="Population search and filters"></td>
+    <td><img src="docs/img/mobile-dashboard.png" alt="Mobile dashboard" width="45%"></td>
+  </tr>
+</table>
+
 ## Design decisions
 
 Every architectural choice follows from the deployment environment:
