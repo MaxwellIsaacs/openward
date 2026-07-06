@@ -17,7 +17,7 @@ members = [
 version = "0.2.0"
 edition = "2021"
 license = "AGPL-3.0-or-later"
-repository = "https://github.com/openward/openward"
+repository = "https://github.com/MaxwellIsaacs/openward"
 
 [workspace.dependencies]
 # Core
