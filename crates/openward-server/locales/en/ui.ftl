@@ -317,6 +317,7 @@ login-username = Username
 login-password = Password
 login-submit = Log in
 login-invalid-credentials = Invalid username or password
+login-too-many-attempts = Too many failed attempts. Try again in 15 minutes.
 login-language = Language
 
 ## Profile

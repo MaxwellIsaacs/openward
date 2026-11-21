@@ -18,33 +18,40 @@ use crate::web::auth as web_auth;
 
 // === Error handling ===
 
-struct ApiError(RegistryError);
+enum ApiError {
+    Registry(RegistryError),
+    Auth(ApiAuthError),
+}
 
 impl From<RegistryError> for ApiError {
     fn from(e: RegistryError) -> Self {
-        Self(e)
+        Self::Registry(e)
     }
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let (status, message) = match &self.0 {
+        let err = match self {
+            Self::Registry(e) => e,
+            Self::Auth(e) => return e.into_response(),
+        };
+        let (status, message) = match &err {
             RegistryError::Domain(d) => match d {
                 DomainError::DetaineeNotFound { .. } => {
-                    (StatusCode::NOT_FOUND, self.0.to_string())
+                    (StatusCode::NOT_FOUND, err.to_string())
                 }
                 DomainError::InactiveDetainee { .. } | DomainError::ReleaseHold { .. } => {
-                    (StatusCode::CONFLICT, self.0.to_string())
+                    (StatusCode::CONFLICT, err.to_string())
                 }
                 DomainError::InvalidBasisTransition { .. } => {
-                    (StatusCode::UNPROCESSABLE_ENTITY, self.0.to_string())
+                    (StatusCode::UNPROCESSABLE_ENTITY, err.to_string())
                 }
                 DomainError::FutureDate { .. } | DomainError::ZeroSentence => {
-                    (StatusCode::BAD_REQUEST, self.0.to_string())
+                    (StatusCode::BAD_REQUEST, err.to_string())
                 }
             },
             RegistryError::Database(_) => {
-                tracing::error!("{}", self.0);
+                tracing::error!("{}", err);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "internal server error".to_string(),
@@ -90,10 +97,7 @@ impl IntoResponse for ApiAuthError {
 
 impl From<ApiAuthError> for ApiError {
     fn from(e: ApiAuthError) -> Self {
-        match e {
-            ApiAuthError::Unauthorized => ApiError(RegistryError::Database("unauthorized".to_string())),
-            ApiAuthError::Forbidden => ApiError(RegistryError::Database("forbidden".to_string())),
-        }
+        Self::Auth(e)
     }
 }
 
@@ -114,16 +118,13 @@ fn extract_operator_from_session(session: &web_auth::Session) -> OperatorId {
 }
 
 fn auth_err(e: ApiAuthError) -> ApiError {
-    match e {
-        ApiAuthError::Unauthorized => ApiError(RegistryError::Database("unauthorized".into())),
-        ApiAuthError::Forbidden => ApiError(RegistryError::Database("forbidden".into())),
-    }
+    ApiError::Auth(e)
 }
 
 
 fn parse_detainee_id(id: &str) -> Result<DetaineeId, ApiError> {
     let uuid = Uuid::parse_str(id).map_err(|_| {
-        ApiError(RegistryError::Domain(DomainError::DetaineeNotFound {
+        ApiError::Registry(RegistryError::Domain(DomainError::DetaineeNotFound {
             id: DetaineeId::from_uuid(Uuid::nil()),
         }))
     })?;
@@ -132,7 +133,7 @@ fn parse_detainee_id(id: &str) -> Result<DetaineeId, ApiError> {
 
 fn parse_court_date_id(id: &str) -> Result<CourtDateId, ApiError> {
     let uuid = Uuid::parse_str(id).map_err(|_| {
-        ApiError(RegistryError::Database(
+        ApiError::Registry(RegistryError::Database(
             "invalid court date ID".to_string(),
         ))
     })?;
@@ -141,7 +142,7 @@ fn parse_court_date_id(id: &str) -> Result<CourtDateId, ApiError> {
 
 fn parse_date(date: &str) -> Result<NaiveDate, ApiError> {
     NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| {
-        ApiError(RegistryError::Database(
+        ApiError::Registry(RegistryError::Database(
             "invalid date format, expected YYYY-MM-DD".to_string(),
         ))
     })
@@ -403,11 +404,11 @@ async fn download_backup(
 
     let backup_path = crate::backup::create_backup(state.registry.pool(), &state.backup_dir)
         .await
-        .map_err(|e| ApiError(RegistryError::Database(e)))?;
+        .map_err(|e| ApiError::Registry(RegistryError::Database(e)))?;
 
     let bytes = tokio::fs::read(&backup_path)
         .await
-        .map_err(|e| ApiError(RegistryError::Database(format!("failed to read backup: {}", e))))?;
+        .map_err(|e| ApiError::Registry(RegistryError::Database(format!("failed to read backup: {}", e))))?;
 
     let filename = backup_path
         .file_name()

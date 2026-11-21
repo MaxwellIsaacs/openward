@@ -41,7 +41,7 @@ argon2 = { version = "0.5", features = ["std"] }
 
 # Web server
 axum = "0.8"
-tower-http = { version = "0.6", features = ["trace", "fs"] }
+tower-http = { version = "0.6", features = ["trace"] }
 askama = "0.14"
 askama_web = { version = "0.14", features = ["axum-0.8"] }
 tracing = "0.1"

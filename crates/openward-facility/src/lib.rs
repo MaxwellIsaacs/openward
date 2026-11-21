@@ -22,8 +22,6 @@ pub struct AppState {
     pub backup_retention: u32,
     /// Server start time, used for uptime reporting in /health.
     pub started_at: Instant,
-    /// Session secret for cookie signing (reserved for future use).
-    pub session_secret: String,
 }
 
 /// Server and facility configuration.
@@ -39,8 +37,6 @@ pub struct ServerConfig {
     pub backup_dir: String,
     /// Number of backup files to keep before pruning. Defaults to 30.
     pub backup_retention: u32,
-    /// Secret used for session cookie signing. Auto-generated if not set.
-    pub session_secret: String,
 }
 
 impl Default for ServerConfig {
@@ -51,18 +47,8 @@ impl Default for ServerConfig {
             facility: FacilityConfig::default(),
             backup_dir: "./backups/".to_string(),
             backup_retention: 30,
-            session_secret: generate_random_hex(),
         }
     }
-}
-
-/// Generate a random 32-byte hex string using two UUID v4s.
-fn generate_random_hex() -> String {
-    format!(
-        "{}{}",
-        uuid::Uuid::new_v4().simple(),
-        uuid::Uuid::new_v4().simple(),
-    )
 }
 
 impl ServerConfig {
@@ -100,14 +86,6 @@ impl ServerConfig {
                 config.backup_retention = n;
             }
         }
-        if let Ok(secret) = env::var("OPENWARD_SESSION_SECRET") {
-            config.session_secret = secret;
-        } else {
-            tracing::warn!(
-                "OPENWARD_SESSION_SECRET not set — using auto-generated secret \
-                 (sessions will not survive restarts)"
-            );
-        }
 
         config
     }
@@ -127,6 +105,5 @@ pub async fn init(config: &ServerConfig) -> Result<AppState, Box<dyn std::error:
         backup_dir: config.backup_dir.clone(),
         backup_retention: config.backup_retention,
         started_at: Instant::now(),
-        session_secret: config.session_secret.clone(),
     })
 }

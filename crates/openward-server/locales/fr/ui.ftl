@@ -317,6 +317,7 @@ login-username = Nom d'utilisateur
 login-password = Mot de passe
 login-submit = Se connecter
 login-invalid-credentials = Nom d'utilisateur ou mot de passe invalide
+login-too-many-attempts = Trop de tentatives échouées. Réessayez dans 15 minutes.
 login-language = Langue
 
 ## Profile

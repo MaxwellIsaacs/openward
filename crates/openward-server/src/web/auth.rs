@@ -1,6 +1,6 @@
 use axum::{
     extract::State,
-    http::{header, HeaderMap, StatusCode},
+    http::{header, Extensions, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     Form,
 };
@@ -9,7 +9,7 @@ use sqlx::SqlitePool;
 use openward_core::OperatorId;
 use crate::i18n::{T, DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES};
 use crate::templates::LoginTemplate;
-use super::AppState_;
+use super::{throttle, AppState_};
 
 const COOKIE_NAME: &str = "openward_session";
 const LANG_COOKIE_NAME: &str = "openward_lang";
@@ -136,6 +136,11 @@ pub fn extract_lang(headers: &HeaderMap) -> String {
     DEFAULT_LANGUAGE.to_string()
 }
 
+fn dummy_hash() -> &'static str {
+    static HASH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    HASH.get_or_init(|| crate::auth::hash_password("openward-dummy").expect("hash dummy password"))
+}
+
 /// GET /login
 pub async fn login_page(
     State(state): State<AppState_>,
@@ -161,6 +166,7 @@ pub struct LoginForm {
 pub async fn login_submit(
     State(state): State<AppState_>,
     headers: HeaderMap,
+    extensions: Extensions,
     Form(form): Form<LoginForm>,
 ) -> Response {
     let secure = secure_attr(&headers);
@@ -175,6 +181,18 @@ pub async fn login_submit(
 
     let t = T::new(&lang, state.legal_overrides.clone());
 
+    let ip = throttle::client_ip(&headers, &extensions);
+    if throttle::is_locked(&form.username, ip) {
+        tracing::warn!(username = %form.username, ?ip, "login refused: too many failed attempts");
+        let mut response = LoginTemplate {
+            error: Some(t.get("login-too-many-attempts")),
+            languages: SUPPORTED_LANGUAGES,
+            t,
+        }.into_response();
+        *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+        return response;
+    }
+
     // Look up operator by username
     let row: Option<(String, String, String, String, String, i32)> = sqlx::query_as(
         "SELECT id, display_name, password_hash, role, language, must_change_password \
@@ -186,6 +204,10 @@ pub async fn login_submit(
     .unwrap_or(None);
 
     let Some((operator_id, display_name, password_hash, role, _op_lang, must_change_pw)) = row else {
+        // Spend the same argon2 time as a real check so response timing
+        // does not reveal which usernames exist.
+        let _ = crate::auth::verify_password(&form.password, dummy_hash());
+        throttle::record_failure(&form.username, ip);
         return LoginTemplate {
             error: Some(t.get("login-invalid-credentials")),
             languages: SUPPORTED_LANGUAGES,
@@ -198,12 +220,15 @@ pub async fn login_submit(
         .unwrap_or(false);
 
     if !pw_ok {
+        throttle::record_failure(&form.username, ip);
         return LoginTemplate {
             error: Some(t.get("login-invalid-credentials")),
             languages: SUPPORTED_LANGUAGES,
             t,
         }.into_response();
     }
+
+    throttle::record_success(&form.username);
 
     // Create session
     let session_id = uuid::Uuid::new_v4().to_string();

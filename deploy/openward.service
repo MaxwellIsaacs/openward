@@ -1,6 +1,6 @@
 [Unit]
 Description=OpenWard Facility Management System
-Documentation=https://github.com/openward/openward
+Documentation=https://github.com/MaxwellIsaacs/openward
 After=network.target
 Wants=network.target
 

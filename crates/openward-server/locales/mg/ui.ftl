@@ -317,6 +317,7 @@ login-username = Anarana mpampiasa
 login-password = Tenimiafina
 login-submit = Hiditra
 login-invalid-credentials = Tsy mety ny anarana mpampiasa na ny tenimiafina
+login-too-many-attempts = Be loatra ny fanandramana tsy nahomby. Andramo indray afaka 15 minitra.
 login-language = Fiteny
 
 ## Profile

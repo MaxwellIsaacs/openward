@@ -77,7 +77,6 @@ sudo journalctl -u openward -n 50 --no-pager
 | `OPENWARD_JUVENILE_AGE` | Age cutoff for juvenile classification | `18` |
 | `OPENWARD_BACKUP_DIR` | Directory for automatic backups | `./backups/` |
 | `OPENWARD_BACKUP_RETENTION` | Number of backup files to retain | `30` |
-| `OPENWARD_SESSION_SECRET` | Secret for session cookie signing. Auto-generated if not set (sessions will not survive restarts) | *(random)* |
 | `OPENWARD_LEGAL_PRESET` | Compiled-in legal terminology preset. Valid values: `fr-MG` (Madagascar), `en-DM` (Dominica) | *(none)* |
 | `OPENWARD_LEGAL_TERMS` | Path to a TOML file with custom legal term overrides | *(none)* |
 | `RUST_LOG` | Logging level filter | `openward_server=info,tower_http=info` |
@@ -89,9 +88,8 @@ OPENWARD_DB=/var/lib/openward/openward.db
 OPENWARD_BIND=0.0.0.0:3000
 OPENWARD_BACKUP_DIR=/var/lib/openward/backups
 OPENWARD_BACKUP_RETENTION=30
-OPENWARD_SESSION_SECRET=your-secret-here-at-least-32-hex-chars
 OPENWARD_CAPACITY=200
-OPENWARD_LEGAL_PRESET=madagascar
+OPENWARD_LEGAL_PRESET=fr-MG
 RUST_LOG=openward_server=info
 ```
 
@@ -109,6 +107,23 @@ The server exposes a `GET /health` endpoint (no authentication required) that re
 ```
 
 Use this for systemd watchdog integration or external monitoring.
+
+## Security Notes
+
+- **Sessions** are random server-side tokens stored in SQLite and sent as
+  `HttpOnly; SameSite=Strict` cookies (`Secure` when Caddy reports HTTPS).
+  Nothing is signed, so there is no session secret to configure.
+- **Cross-site request forgery:** every POST/PUT/DELETE whose
+  `Sec-Fetch-Site` or `Origin` header shows it came from another site is
+  rejected with 403. Caddy must pass the original `Host` header through,
+  which `reverse_proxy` does by default.
+- **Login throttling:** 5 failed attempts per username or per client IP
+  within 15 minutes lock that key until the window passes. Behind Caddy
+  the client IP comes from the last `X-Forwarded-For` entry. Counters are
+  in memory and reset on restart.
+- **Data at rest is not encrypted.** The SQLite file and its backups are
+  plaintext. Put `/var/lib/openward` on an encrypted volume (LUKS) and
+  restrict who can read the backups.
 
 ## First Run
 
@@ -191,7 +206,7 @@ sudo -u ubuntu bash <<'EOS'
 cd ~
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
 source ~/.cargo/env
-git clone https://github.com/openward/openward /tmp/openward-src
+git clone https://github.com/MaxwellIsaacs/openward /tmp/openward-src
 sudo mv /tmp/openward-src/* /tmp/openward-src/.[!.]* /opt/openward-src/ 2>/dev/null || true
 sudo chown -R ubuntu:ubuntu /opt/openward-src
 cd /opt/openward-src
@@ -206,13 +221,11 @@ install -m 0755 /opt/openward-src/target/release/openward-seed /opt/openward/ope
 ### 6. Environment file
 
 ```bash
-SECRET=$(openssl rand -hex 32)
 cat >/etc/openward/openward.env <<EOF
 OPENWARD_DB=/var/lib/openward/openward.db
 OPENWARD_BIND=127.0.0.1:3000
 OPENWARD_BACKUP_DIR=/var/lib/openward/backups
 OPENWARD_BACKUP_RETENTION=30
-OPENWARD_SESSION_SECRET=$SECRET
 OPENWARD_CAPACITY=150
 OPENWARD_LEGAL_PRESET=en-DM
 RUST_LOG=openward_server=info

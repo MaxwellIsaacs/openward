@@ -13,6 +13,7 @@ pub mod util;
 pub mod profile;
 pub mod operators;
 pub mod audit;
+pub mod throttle;
 
 use std::sync::Arc;
 use axum::{

@@ -1,0 +1,18 @@
+services:
+  openward:
+    build: .
+    image: openward:latest
+    restart: unless-stopped
+    ports:
+      # Loopback only: put a TLS reverse proxy (Caddy, Traefik) in front
+      # before exposing this beyond the machine.
+      - "127.0.0.1:3000:3000"
+    environment:
+      OPENWARD_CAPACITY: "150"
+      # Compiled-in legal terminology: fr-MG (Madagascar) or en-DM (Dominica).
+      # OPENWARD_LEGAL_PRESET: en-DM
+    volumes:
+      - openward-data:/data
+
+volumes:
+  openward-data:

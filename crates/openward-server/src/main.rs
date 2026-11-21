@@ -1,8 +1,6 @@
-use openward_server::{api, auth, i18n, web};
+use openward_server::{auth, i18n};
 
 use std::sync::Arc;
-use axum::Router;
-use tower_http::services::ServeDir;
 use openward_facility::ServerConfig;
 
 #[tokio::main]
@@ -36,14 +34,7 @@ async fn main() {
         .await
         .expect("failed to seed default admin");
 
-    let static_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/static");
-
-    let app = Router::new()
-        .merge(api::api_router())
-        .merge(web::html_router())
-        .nest_service("/static", ServeDir::new(static_dir))
-        .layer(tower_http::trace::TraceLayer::new_for_http())
-        .with_state(Arc::new(state));
+    let app = openward_server::app(Arc::new(state));
 
     let listener = tokio::net::TcpListener::bind(&config.bind_address)
         .await
@@ -51,7 +42,7 @@ async fn main() {
 
     tracing::info!("listening on {}", config.bind_address);
 
-    axum::serve(listener, app)
+    axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>())
         .await
         .expect("server error");
 }

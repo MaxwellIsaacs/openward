@@ -50,7 +50,7 @@ multipass shell openward-test
 # 2. Inside the VM, run deploy/README.md steps 3, 4, 5, 7 verbatim.
 #    Steps to ADJUST for the local VM run:
 #
-#    - Step 5: instead of `git clone https://github.com/openward/openward`,
+#    - Step 5: instead of `git clone https://github.com/MaxwellIsaacs/openward`,
 #      use `multipass transfer` from the host to push the working tree.
 #      Either:
 #        host$ multipass transfer ../openward openward-test:/opt/openward-src --recursive

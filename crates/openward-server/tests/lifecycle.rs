@@ -19,7 +19,7 @@ use openward_core::*;
 use openward_db::{apply_schema, create_pool};
 use openward_facility::AppState;
 use openward_registry::{FacilityConfig, SqliteRegistry};
-use openward_server::{api, auth, web};
+use openward_server::auth;
 
 // =========================================================================
 // Helpers
@@ -41,7 +41,6 @@ async fn build_app() -> (Router, Arc<AppState>) {
             .to_string(),
         backup_retention: 5,
         started_at: Instant::now(),
-        session_secret: "test-secret".to_string(),
     };
 
     // Seed default admin
@@ -54,10 +53,7 @@ async fn build_app() -> (Router, Arc<AppState>) {
 
     let state = Arc::new(state);
 
-    let app = Router::new()
-        .merge(api::api_router())
-        .merge(web::html_router())
-        .with_state(state.clone());
+    let app = openward_server::app(state.clone());
 
     (app, state)
 }
@@ -1206,10 +1202,10 @@ async fn unauthenticated_requests_rejected() {
         )
         .await
         .unwrap();
-    assert_ne!(
+    assert_eq!(
         resp.status(),
-        StatusCode::OK,
-        "no session should not return 200"
+        StatusCode::UNAUTHORIZED,
+        "no session should return 401"
     );
 
     // Invalid cookie — should not return success
@@ -1223,10 +1219,10 @@ async fn unauthenticated_requests_rejected() {
         ))
         .await
         .unwrap();
-    assert_ne!(
+    assert_eq!(
         resp.status(),
-        StatusCode::OK,
-        "bad session should not return 200"
+        StatusCode::UNAUTHORIZED,
+        "bad session should return 401"
     );
 
     // Health check SHOULD work without auth
@@ -1242,4 +1238,22 @@ async fn unauthenticated_requests_rejected() {
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK, "health needs no auth");
+}
+
+#[tokio::test]
+async fn insufficient_role_returns_403() {
+    let (app, state) = build_app().await;
+    create_operator(&state, "viewer", "Viewer", "viewerpass", "readonly").await;
+    let sid = login(&state, "viewer", "viewerpass").await.expect("login");
+
+    let resp = app
+        .oneshot(json_request(
+            Method::GET,
+            "/api/export/population.csv",
+            &session_cookie(&sid),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN, "readonly cannot export");
 }

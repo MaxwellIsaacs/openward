@@ -14,7 +14,7 @@ use tower::ServiceExt;
 use openward_db::{apply_schema, create_pool};
 use openward_facility::AppState;
 use openward_registry::{FacilityConfig, SqliteRegistry};
-use openward_server::{auth, web};
+use openward_server::auth;
 
 async fn build_app() -> Router {
     let pool = create_pool(":memory:").await.expect("pool");
@@ -32,16 +32,13 @@ async fn build_app() -> Router {
             .to_string(),
         backup_retention: 5,
         started_at: Instant::now(),
-        session_secret: "test-secret".to_string(),
     };
 
     auth::seed_default_admin(state.registry.pool())
         .await
         .expect("seed admin");
 
-    Router::new()
-        .merge(web::html_router())
-        .with_state(Arc::new(state))
+    openward_server::app(Arc::new(state))
 }
 
 async fn post_login(app: Router, xfp: Option<&str>) -> Vec<String> {

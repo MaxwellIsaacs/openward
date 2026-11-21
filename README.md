@@ -27,7 +27,7 @@ Every architectural choice follows from the deployment environment:
 - **Clock-sanity handling.** A Pi has no RTC; after a power cut without NTP the clock is wrong. Date validation detects an insane system clock and degrades rather than blocking intake.
 - **Compliance flags computed, not stored.** Custody-time-limit breaches, missing court dates, juvenile housing violations, and expired warrants are derived from the domain model on read, so they can never go stale.
 - **i18n from the start.** Fluent-based localization (English, French, Malagasy) plus pluggable legal presets — charge terminology and detention bases are configuration (`legal-presets/*.toml`), not code, because criminal codes differ by jurisdiction.
-- **A Pi with systemd is the deployment unit.** No containers, no orchestration. `deploy/` contains the systemd unit, Caddyfile, and a runbook that has been exercised end-to-end.
+- **A Pi with systemd is the deployment unit.** One self-contained binary (templates, translations and assets compiled in), no orchestration. `deploy/` contains the systemd unit, Caddyfile, and a runbook that has been exercised end-to-end. A container image exists for evaluation.
 
 ## Architecture
 
@@ -45,7 +45,7 @@ openward-db            SQLite pool, migrations, WAL
 
 Cargo workspace, ten crates. `openward-core` holds the domain types and business logic with no async and no database dependency, so the rules (release eligibility, custody-limit math, housing constraints) are plainly testable. `openward-medical`, `openward-visitors`, `openward-disciplinary`, and `openward-commissary` are intentional stubs — module boundaries reserved for the features a real deployment would ask for next.
 
-**Stack:** Rust, Axum, SQLx/SQLite, Askama, HTMX, Pico CSS, Fluent. ~18k lines, 150 tests (integration, auth, RBAC, lifecycle, migrations, i18n).
+**Stack:** Rust, Axum, SQLx/SQLite, Askama, HTMX, Pico CSS, Fluent. ~18k lines, 169 tests (integration, auth, RBAC, lifecycle, migrations, i18n).
 
 ## Features
 
@@ -55,12 +55,21 @@ Cargo workspace, ten crates. `openward-core` holds the domain types and business
 - Housing assignment with capacity and juvenile-separation warnings
 - Property log, notes, transfers, release workflow with eligibility checks
 - Daily count sheet and facility dashboard
-- Operator accounts with role-based access control (admin / supervisor / clerk)
+- Operator accounts with role-based access control (admin / supervisor / operator / read-only)
 - Tamper-evident audit trail with per-entry detail view and chain verification
 - Online backup + CSV export
 - Localized UI (en / fr / mg) and per-jurisdiction legal presets
 
 ## Running it
+
+With Docker or Podman:
+
+```bash
+docker compose up -d                                                    # http://localhost:3000
+docker compose run --rm openward openward-seed --db /data/openward.db   # optional demo data
+```
+
+From source:
 
 ```bash
 cargo run -p openward-server                # first run creates the DB and an admin account
@@ -68,6 +77,16 @@ cargo run -p openward-seed -- --db openward.db --count 80   # optional demo data
 ```
 
 Configuration is environment-driven (`OPENWARD_DB`, `OPENWARD_BIND`, …); see `deploy/README.md` for the full production runbook (Ubuntu VM or Raspberry Pi, systemd + Caddy with TLS).
+
+Log in as `admin` / `changeme`; the password must be changed on first login.
+
+## Security
+
+- Sessions are random server-side tokens in `HttpOnly; SameSite=Strict` cookies, `Secure` behind TLS.
+- Cross-site state-changing requests are rejected (`Sec-Fetch-Site` / `Origin` checks).
+- Failed logins are throttled: 5 per username or client IP per 15 minutes.
+- Passwords are argon2id; SQL is parameterized; templates autoescape.
+- **Not encrypted at rest.** The SQLite database and backups are plaintext — use full-disk encryption on the host.
 
 ## Status
 
