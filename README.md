@@ -2,6 +2,7 @@
 
 **A facility records system for correctional institutions in low-resource environments.**
 
+Website: **[openward.maxisaacs.com](https://openward.maxisaacs.com)** ([privacy](https://openward.maxisaacs.com/privacy.html), [do no harm](https://openward.maxisaacs.com/do-no-harm.html))  
 Live demo: **[openward-demo.maxisaacs.com](https://openward-demo.maxisaacs.com)** — seeded with synthetic data.
 
 OpenWard manages the detainee lifecycle — admission, detention basis, court dates, warrants, housing, property, release — for small prisons that today run on paper ledgers. It is designed for the operating reality of facilities in places like Madagascar and the Eastern Caribbean: a Raspberry Pi in a back office, intermittent power, no IT staff, operators with limited technical literacy, and legal-compliance requirements (custody time limits, juvenile separation, audit accountability) that paper systems routinely fail.
@@ -94,4 +95,4 @@ Working demo; not in production use. Single-facility scope. The registry, court,
 
 ## License
 
-AGPL-3.0-or-later.
+[AGPL-3.0-or-later](LICENSE). Free to use, study, modify and share; anyone who runs a modified version as a network service must publish their changes.
