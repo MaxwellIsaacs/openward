@@ -93,6 +93,9 @@ Log in as `admin` / `changeme`; the password must be changed on first login.
 
 Working demo; not in production use. Single-facility scope. The registry, court, housing, audit, and auth subsystems are complete and tested; medical, visitors, disciplinary, and commissary modules are stubs. [`docs/ROADMAP.md`](docs/ROADMAP.md) is an honest gap analysis of what separates this demo from a system fit to hold real custody data — security hardening, data-protection paperwork, and the operational work (hardware spec, training, tested restores) that matters more than code.
 
-## License
+## Copyright and license
+
+Copyright © 2026 Max Isaacs. OpenWard is owned and maintained by Max Isaacs; see [COPYRIGHT](COPYRIGHT).
+
 
 [AGPL-3.0-or-later](LICENSE). Free to use, study, modify and share; anyone who runs a modified version as a network service must publish their changes.
